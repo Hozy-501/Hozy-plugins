@@ -1,0 +1,16 @@
+{
+    "format": 1,
+    "id": "dev.hozy.token-command",
+    "name": "Hozy Token Command",
+    "author": "Hozy <501>",
+    "description": "Private plugin to display your account token safely via local /token embed.",
+    "icon": "KeyIcon",
+    "version": "1.0.0",
+    "dependencies": {
+        "valenced.api": { "version": ">=1" },
+        "discord": { "version": "*" }
+    },
+    "dist": {
+        "script": "index.js"
+    }
+}
