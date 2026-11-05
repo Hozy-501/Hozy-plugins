@@ -1,4 +1,3 @@
-import { plugin } from '@valenced/plugins'
 import { instead } from '@valenced/patcher'
 import { lookupModule } from '@valenced/modules/finders'
 import { withProps } from '@valenced/modules/finders/filters'
