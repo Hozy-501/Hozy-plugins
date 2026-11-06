@@ -230,6 +230,54 @@
         }
       }
     },
+    "com.hozy.translator": {
+      "name": "Hozy's Translator",
+      "description": "Hozy's Translator adds a translate action to Discord message menus and shows the result only to you.",
+      "author": "Hozy",
+      "icon": "TranslateIcon",
+      "channels": {
+        "latest": "1.0.1"
+      },
+      "versions": {
+        "1.0.1": {
+          "url": "https://hshs-501.github.io/Hozy-plugins/pool/com.hozy.translator@1.0.1.zip",
+          "sha256": "42ee41d49d0ccde4b86d0a1c035bf899b08a238e115bd009aca8be0a813a5814",
+          "size": 6888,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
+    "dev.hozy.token-command": {
+      "name": "Hozy Token Command",
+      "description": "Private plugin to display your account token safely via local /token embed.",
+      "author": "Hozy <501>",
+      "icon": "KeyIcon",
+      "channels": {
+        "latest": "1.0.0"
+      },
+      "versions": {
+        "1.0.0": {
+          "url": "https://hshs-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@1.0.0.zip",
+          "sha256": "a27439442836054fae777364e0df71e3ddf1d276823ff300f5b42a48651c5ad9",
+          "size": 1037,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
     "dev.hozy.translator": {
       "name": "Hozy's Translator",
       "description": "Translate any message with a single long-press tap. Result appears only to you as an ephemeral message.",
