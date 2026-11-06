@@ -4,7 +4,6 @@ import {
 	ToastActionCreators,
 } from '@valenced/discord/actions'
 import { Design } from '@valenced/discord/design'
-import { Clipboard } from '@valenced/externals/react-native-clipboard'
 import { getModules, lookupModule } from '@valenced/modules/finders'
 import { withProps } from '@valenced/modules/finders/filters'
 import { instead } from '@valenced/patcher'
@@ -13,306 +12,201 @@ import { createElement } from 'react'
 type AnyRecord = Record<string, any>
 type Cleanup = (...fns: Array<() => any>) => void
 
-const COMMAND_NAME = 'token'
-const APPLICATION_ID = '-1'
-const CHAT_COMMAND = 1
-const BUILT_IN_INPUT = 0
+const NAME = 'token'
+const APP_ID = '-1'
+const CHAT = 1
+const BUILT_IN = 0
+
 const patched = new WeakSet<object>()
 
-function unwrap(mod: unknown): AnyRecord | undefined {
-	if (!mod || typeof mod !== 'object') return
-	const rec = mod as AnyRecord
-	if (
-		typeof rec.getBuiltInCommands === 'function' ||
-		typeof rec.getCommands === 'function' ||
-		typeof rec.sendMessage === 'function' ||
-		typeof rec.getToken === 'function' ||
-		typeof rec.executeCommand === 'function'
-	)
-		return rec
+function asModule(value: unknown): AnyRecord | undefined {
+	if (!value || typeof value !== 'object') return
+	const rec = value as AnyRecord
+	if (typeof rec.getBuiltInCommands === 'function') return rec
+	if (typeof rec.sendMessage === 'function') return rec
+	if (typeof rec.getToken === 'function') return rec
 	if (rec.default && typeof rec.default === 'object')
-		return unwrap(rec.default) ?? (rec.default as AnyRecord)
+		return asModule(rec.default) ?? (rec.default as AnyRecord)
 }
 
-function showToast(
-	key: string,
+function toast(
 	text: string,
 	variant: 'default' | 'success' | 'critical' = 'default',
 ) {
 	try {
-		ToastActionCreators.open(key, { text, variant })
+		ToastActionCreators.open('hozy-token', { text, variant })
 	} catch {
 		try {
-			ToastActionCreators.open({ key, content: text })
+			ToastActionCreators.open({ key: 'hozy-token', content: text })
 		} catch {
-			console.error('[Hozy Token]', text)
+			console.log('[Hozy Token]', text)
 		}
 	}
 }
 
 function getToken(): string {
-	if (typeof (getToken as any)._last === 'string' && (getToken as any)._last)
-		return (getToken as any)._last
 	try {
 		const [exports] = lookupModule(withProps('getToken'))
-		const store = unwrap(exports) ?? (exports as AnyRecord)
-		if (typeof store?.getToken === 'function') {
-			const token = store.getToken()
-			if (typeof token === 'string' && token) {
-				;(getToken as any)._last = token
-				return token
-			}
-		}
+		const store = asModule(exports) ?? (exports as AnyRecord)
+		const token = store?.getToken?.()
+		if (typeof token === 'string' && token) return token
 	} catch {}
 	return ''
 }
 
-function readTokenNow(): string {
-	return getToken()
-}
-
-function copyToken(token: string) {
+function copy(text: string) {
 	try {
-		Clipboard.setString(token)
-		showToast('hozy-token-copied', 'Token copied.', 'success')
-	} catch {
-		showToast('hozy-token-copy-fail', 'Could not copy token.', 'critical')
-	}
+		const [clip] = lookupModule(withProps('setString', 'getString'))
+		const api = asModule(clip) ?? (clip as AnyRecord)
+		if (typeof api?.setString === 'function') {
+			api.setString(text)
+			toast('Token copied.', 'success')
+			return
+		}
+	} catch {}
+	toast('Could not copy token.', 'critical')
 }
 
-function showTokenAlert() {
-	const token = readTokenNow()
-	const body = token || 'Token not found.'
+function showToken() {
+	const token = getToken()
 
 	try {
 		AlertActionCreators.openAlert(
-			'hozy-token-alert',
+			'hozy-token',
 			createElement(Design.AlertModal, {
 				title: "Hozy's Token",
 				content: token
-					? 'Your account token. Keep it private — anyone with it can use your account.'
+					? 'Only you can see this. Anyone with this token can use your account.'
 					: 'Could not read the account token.',
 				extraContent: createElement(Design.Text, {
 					variant: 'text-sm/medium',
 					selectable: true,
-					style: { color: '#dbdee1' },
-					children: body,
+					children: token || 'Token not found.',
 				}),
-				actions: token
-					? createElement(Design.AlertActionButton, {
-							text: 'Copy token',
-							variant: 'primary',
-							onPress: () => {
-								copyToken(token)
-								AlertActionCreators.dismissAlert('hozy-token-alert')
-							},
-						})
-					: createElement(Design.AlertActionButton, {
-							text: 'OK',
-							variant: 'secondary',
-							onPress: () =>
-								AlertActionCreators.dismissAlert('hozy-token-alert'),
-						}),
+				actions: createElement(Design.AlertActionButton, {
+					text: token ? 'Copy token' : 'OK',
+					variant: token ? 'primary' : 'secondary',
+					onPress: () => {
+						if (token) copy(token)
+						AlertActionCreators.dismissAlert('hozy-token')
+					},
+				}),
 			}),
 		)
 		return
 	} catch (error) {
-		console.error('[Hozy Token] Alert failed:', error)
+		console.error('[Hozy Token] alert failed:', error)
 	}
 
-	if (token) copyToken(token)
-	else showToast('hozy-token-missing', 'Token not found.', 'critical')
+	if (token) copy(token)
+	else toast('Token not found.', 'critical')
 }
 
-function isTokenText(value: unknown): boolean {
+function isTokenCommand(value: unknown) {
 	if (typeof value !== 'string') return false
-	const text = value.trim().toLowerCase().replace(/^\//, '')
-	return text === 'token' || text === '.token' || text === '!token'
+	const text = value.trim().toLowerCase()
+	return (
+		text === '/token' ||
+		text === 'token' ||
+		text === '.token' ||
+		text === '!token'
+	)
 }
 
-function messageLooksLikeToken(message: any): boolean {
-	if (!message) return false
-	if (isTokenText(message)) return true
-	if (isTokenText(message.content)) return true
-	if (isTokenText(message.text)) return true
-	if (message.content?.content && isTokenText(message.content.content))
-		return true
-	return false
-}
+function commandFrom(list: any[]) {
+	const sample = list.find(cmd => cmd && typeof cmd.name === 'string') ?? {}
+	const ids = list.map(cmd => Number(cmd?.id)).filter(n => Number.isFinite(n))
+	const id = ids.length ? String(Math.min(...ids) - 1) : '-2'
 
-function toArray(list: unknown): any[] | undefined {
-	if (Array.isArray(list)) return list
-	if (list && typeof (list as any)[Symbol.iterator] === 'function') {
-		try {
-			return Array.from(list as Iterable<any>)
-		} catch {}
-	}
-}
-
-function wantsChatCommands(type: unknown): boolean {
-	if (type == null || type === CHAT_COMMAND) return true
-	if (Array.isArray(type))
-		return type.length === 0 || type.includes(CHAT_COMMAND)
-	return true
-}
-
-function nextCommandId(list: any[]): string {
-	const ids = list.map(cmd => Number(cmd?.id)).filter(id => Number.isFinite(id))
-	if (!ids.length) return '-2'
-	return String(Math.min(...ids) - 1)
-}
-
-function makeCommand(list: any[]) {
-	const name = COMMAND_NAME
-	const description = 'Show your Discord token locally'
-	const template =
-		list.find(
-			cmd => cmd && typeof cmd === 'object' && typeof cmd.name === 'string',
-		) ?? {}
 	return {
-		...template,
-		id: nextCommandId(list),
-		applicationId: template.applicationId ?? APPLICATION_ID,
-		name,
-		displayName: name,
-		untranslatedName: name,
-		description,
-		displayDescription: description,
-		untranslatedDescription: description,
-		inputType: BUILT_IN_INPUT,
-		type: CHAT_COMMAND,
-		target: undefined,
-		guildId: undefined,
-		dmPermission: true,
-		integrationTypes: [0, 1],
-		contexts: [0, 1, 2],
+		...sample,
+		id,
+		applicationId: sample.applicationId ?? APP_ID,
+		name: NAME,
+		displayName: NAME,
+		untranslatedName: NAME,
+		description: 'Show your Discord token locally',
+		displayDescription: 'Show your Discord token locally',
+		untranslatedDescription: 'Show your Discord token locally',
+		inputType: BUILT_IN,
+		type: CHAT,
 		options: [],
-		predicate: () => true,
-		execute() {
-			showTokenAlert()
+		guildId: undefined,
+		target: undefined,
+		dmPermission: true,
+		execute: () => {
+			showToken()
 		},
 	}
 }
 
-function injectCommand(list: unknown): unknown {
-	const arr = toArray(list)
-	if (!arr) return list
-	if (arr.some((cmd: any) => cmd?.name === COMMAND_NAME)) return arr
-	return [...arr, makeCommand(arr)]
+function withTokenCommand(result: unknown) {
+	if (!Array.isArray(result)) return result
+	if (result.some(cmd => cmd?.name === NAME)) return result
+	if (
+		result.length &&
+		!result.some(
+			cmd => cmd && typeof cmd === 'object' && typeof cmd.name === 'string',
+		)
+	)
+		return result
+	return [...result, commandFrom(result)]
 }
 
-function patchMethod(
+function hook(
 	mod: AnyRecord,
 	key: string,
 	cleanup: Cleanup,
-	hook: (this: any, args: any[], original: (...a: any[]) => any) => any,
+	fn: (this: any, args: any[], original: (...a: any[]) => any) => any,
 ) {
 	if (typeof mod[key] !== 'function') return
-	const mark = `__hozyToken_${key}`
-	if ((mod as any)[mark]) return
-	;(mod as any)[mark] = true
-	cleanup(instead(mod, key, hook))
+	if (patched.has(mod) && (mod as any)[`__hozy_${key}`]) return
+	;(mod as any)[`__hozy_${key}`] = true
+	cleanup(instead(mod, key, fn))
 }
 
 function patchCommands(mod: AnyRecord | undefined, cleanup: Cleanup) {
-	if (!mod || patched.has(mod)) return
-	if (
-		typeof mod.getBuiltInCommands !== 'function' &&
-		typeof mod.getCommands !== 'function'
-	)
-		return
+	if (!mod || typeof mod.getBuiltInCommands !== 'function') return
+	if (patched.has(mod)) return
 	patched.add(mod)
 
-	patchMethod(mod, 'getBuiltInCommands', cleanup, function (args, original) {
+	hook(mod, 'getBuiltInCommands', cleanup, function (args, original) {
 		const res = original.apply(this, args)
 		try {
-			if (!wantsChatCommands(args[0])) return res
-			return injectCommand(res)
+			return withTokenCommand(res)
 		} catch (error) {
-			console.error('[Hozy Token] inject failed:', error)
-			return res
-		}
-	})
-	patchMethod(mod, 'getCommands', cleanup, function (args, original) {
-		const res = original.apply(this, args)
-		try {
-			return injectCommand(res)
-		} catch {
-			return res
-		}
-	})
-	patchMethod(mod, 'query', cleanup, function (args, original) {
-		const res = original.apply(this, args)
-		try {
-			return injectCommand(res)
-		} catch {
+			console.error('[Hozy Token] command inject failed:', error)
 			return res
 		}
 	})
 }
 
-function patchSendMessage(mod: AnyRecord | undefined, cleanup: Cleanup) {
+function patchSend(mod: AnyRecord | undefined, cleanup: Cleanup) {
 	if (!mod || typeof mod.sendMessage !== 'function') return
-	patchMethod(mod, 'sendMessage', cleanup, function (args, original) {
+	hook(mod, 'sendMessage', cleanup, function (args, original) {
 		const message = args.length > 1 ? args[1] : args[0]
-		if (messageLooksLikeToken(message) || isTokenText(args[0])) {
-			showTokenAlert()
+		const content =
+			typeof message === 'string'
+				? message
+				: (message?.content ?? message?.text)
+		if (isTokenCommand(content)) {
+			showToken()
 			return Promise.resolve({ valid: true, body: {} })
 		}
 		return original.apply(this, args)
 	})
 }
 
-function patchExecute(mod: AnyRecord | undefined, cleanup: Cleanup) {
-	if (!mod) return
-	patchMethod(mod, 'executeCommand', cleanup, function (args, original) {
-		const cmd = args[0]
-		if (cmd?.name === COMMAND_NAME || isTokenText(cmd?.name)) {
-			showTokenAlert()
-			return Promise.resolve()
-		}
-		return original.apply(this, args)
-	})
-}
-
-function watch(
-	filter: ReturnType<typeof withProps>,
-	apply: (mod: AnyRecord) => void,
-	cleanup: Cleanup,
-) {
+function attach(cleanup: Cleanup) {
 	cleanup(
-		getModules(filter, (exports: unknown) => {
-			const mod = unwrap(exports) ?? (exports as AnyRecord)
-			if (mod) apply(mod)
+		getModules(withProps('getBuiltInCommands'), (exports: unknown) => {
+			patchCommands(asModule(exports) ?? (exports as AnyRecord), cleanup)
 		}),
 	)
-}
-
-function install(cleanup: Cleanup) {
-	watch(
-		withProps('getBuiltInCommands'),
-		mod => patchCommands(mod, cleanup),
-		cleanup,
-	)
-	watch(withProps('getCommands'), mod => patchCommands(mod, cleanup), cleanup)
-	watch(
-		withProps('sendMessage'),
-		mod => patchSendMessage(mod, cleanup),
-		cleanup,
-	)
-	watch(withProps('executeCommand'), mod => patchExecute(mod, cleanup), cleanup)
-	watch(
-		withProps('getToken'),
-		mod => {
-			if (typeof mod.getToken === 'function') {
-				try {
-					const token = mod.getToken()
-					if (typeof token === 'string' && token)
-						(getToken as any)._last = token
-				} catch {}
-			}
-		},
-		cleanup,
+	cleanup(
+		getModules(withProps('sendMessage', 'editMessage'), (exports: unknown) => {
+			patchSend(asModule(exports) ?? (exports as AnyRecord), cleanup)
+		}),
 	)
 }
 
@@ -322,16 +216,16 @@ function SettingsComponent() {
 			<Design.TableRowGroup title="Token">
 				<Design.TableRow
 					label="Show account token"
-					subLabel="Visible only to you. Never share it."
+					subLabel="Visible only to you"
 					arrow
-					onPress={() => showTokenAlert()}
+					onPress={() => showToken()}
 				/>
 			</Design.TableRowGroup>
-			<Design.TableRowGroup title="Command">
-				<Design.TableRow
-					label="/token"
-					subLabel="Type /token in chat, or tap the row above"
-				/>
+			<Design.TableRowGroup
+				title="How to use"
+				description="Type /token in any chat, or tap the row above."
+			>
+				<Design.TableRow label="/token" subLabel="Built-in local command" />
 			</Design.TableRowGroup>
 		</Page>
 	)
@@ -340,14 +234,14 @@ function SettingsComponent() {
 export default plugin({
 	SettingsComponent,
 	init({ cleanup, logger }) {
-		logger.log('Hozy Token plugin init.')
-		install(cleanup)
+		logger.log('Hozy Token 2.0 init')
+		attach(cleanup)
 	},
 	start({ cleanup, logger }) {
-		logger.log('Hozy Token plugin active.')
-		install(cleanup)
+		logger.log('Hozy Token 2.0 start')
+		attach(cleanup)
 	},
 	stop({ logger }) {
-		logger.log('Hozy Token plugin stopped.')
+		logger.log('Hozy Token 2.0 stop')
 	},
 })
