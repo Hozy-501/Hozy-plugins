@@ -273,7 +273,7 @@
       "author": "Hozy <501>",
       "icon": "KeyIcon",
       "channels": {
-        "latest": "2.0.0"
+        "latest": "2.0.1"
       },
       "versions": {
         "1.0.0": {
@@ -332,6 +332,19 @@
           "url": "https://hshs-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@2.0.0.zip",
           "sha256": "021c729b1de3b709ff61f7deb179205838445816cc2b96a7ab543670a40ff6d1",
           "size": 2106,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "2.0.1": {
+          "url": "https://hshs-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@2.0.1.zip",
+          "sha256": "9190c739af077d31991f656622092c70e665f7fdf9a3cb37d79f5b08d65177fb",
+          "size": 2154,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
