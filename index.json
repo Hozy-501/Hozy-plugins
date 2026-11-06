@@ -269,11 +269,11 @@
     },
     "dev.hozy.token-command": {
       "name": "Hozy Token Command",
-      "description": "Private plugin to display your account token safely via local /token embed.",
+      "description": "Type /token in chat to show your Discord token locally. Only you can see it.",
       "author": "Hozy <501>",
       "icon": "KeyIcon",
       "channels": {
-        "latest": "1.0.3"
+        "latest": "2.0.0"
       },
       "versions": {
         "1.0.0": {
@@ -322,6 +322,19 @@
           "dependencies": {
             "valenced.api": {
               "version": ">=1"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "2.0.0": {
+          "url": "https://hshs-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@2.0.0.zip",
+          "sha256": "021c729b1de3b709ff61f7deb179205838445816cc2b96a7ab543670a40ff6d1",
+          "size": 2106,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
             },
             "discord": {
               "version": "*"
