@@ -1,3 +1,4 @@
+import { Page } from '@valenced/components'
 import {
 	AlertActionCreators,
 	ToastActionCreators,
@@ -6,15 +7,16 @@ import { Design } from '@valenced/discord/design'
 import { Clipboard } from '@valenced/externals/react-native-clipboard'
 import { lookupModule, waitForModules } from '@valenced/modules/finders'
 import { withProps } from '@valenced/modules/finders/filters'
-import { after, instead } from '@valenced/patcher'
+import { instead } from '@valenced/patcher'
 import { createElement } from 'react'
 
 type AnyRecord = Record<string, any>
 type Cleanup = (...fns: Array<() => any>) => void
 
 const COMMAND_NAME = 'token'
-const COMMAND_ID = '-501501'
 const APPLICATION_ID = '-1'
+const CHAT_COMMAND = 1
+const BUILT_IN_INPUT = 0
 const patched = new WeakSet<object>()
 
 function unwrap(mod: unknown): AnyRecord | undefined {
@@ -23,8 +25,7 @@ function unwrap(mod: unknown): AnyRecord | undefined {
 	if (
 		typeof rec.getBuiltInCommands === 'function' ||
 		typeof rec.sendMessage === 'function' ||
-		typeof rec.getToken === 'function' ||
-		typeof rec.receiveMessage === 'function'
+		typeof rec.getToken === 'function'
 	)
 		return rec
 	if (rec.default && typeof rec.default === 'object')
@@ -135,17 +136,59 @@ function messageLooksLikeToken(message: any): boolean {
 	return false
 }
 
-function makeCommand() {
+function wantsChatCommands(type: unknown): boolean {
+	if (type == null) return true
+	if (type === CHAT_COMMAND) return true
+	if (Array.isArray(type)) return type.includes(CHAT_COMMAND)
+	if (typeof type === 'object' && type !== null) {
+		try {
+			return Array.from(type as Iterable<unknown>).includes(CHAT_COMMAND)
+		} catch {
+			return true
+		}
+	}
+	return true
+}
+
+function looksLikeCommandList(list: unknown): list is any[] {
+	return (
+		Array.isArray(list) &&
+		list.some(
+			cmd =>
+				cmd &&
+				typeof cmd === 'object' &&
+				typeof cmd.name === 'string' &&
+				(typeof cmd.execute === 'function' || cmd.type === CHAT_COMMAND),
+		)
+	)
+}
+
+function nextCommandId(list: any[]): string {
+	const ids = list.map(cmd => Number(cmd?.id)).filter(id => Number.isFinite(id))
+	if (!ids.length) return '-2'
+	return String(Math.min(...ids) - 1)
+}
+
+function makeCommand(list: any[]) {
+	const name = COMMAND_NAME
+	const description = 'Show your Discord token locally'
+	const template = list.find(cmd => cmd && typeof cmd === 'object') ?? {}
 	return {
-		id: COMMAND_ID,
-		applicationId: APPLICATION_ID,
-		name: COMMAND_NAME,
-		displayName: COMMAND_NAME,
-		description: 'Show your Discord token locally',
-		displayDescription: 'Show your Discord token locally',
-		inputType: 0,
-		type: 1,
+		...template,
+		id: nextCommandId(list),
+		applicationId: template.applicationId ?? APPLICATION_ID,
+		name,
+		displayName: name,
+		untranslatedName: name,
+		description,
+		displayDescription: description,
+		untranslatedDescription: description,
+		inputType: template.inputType ?? BUILT_IN_INPUT,
+		type: template.type ?? CHAT_COMMAND,
+		target: undefined,
+		guildId: undefined,
 		options: [],
+		predicate: () => true,
 		execute() {
 			showTokenAlert()
 		},
@@ -153,30 +196,54 @@ function makeCommand() {
 }
 
 function injectCommand(list: unknown): unknown {
-	if (!Array.isArray(list)) return list
-	if (
-		list.some(
-			(cmd: any) => cmd?.name === COMMAND_NAME || cmd?.id === COMMAND_ID,
-		)
-	)
-		return list
-	return [...list, makeCommand()]
+	if (!looksLikeCommandList(list)) return list
+	if (list.some((cmd: any) => cmd?.name === COMMAND_NAME)) return list
+	return [...list, makeCommand(list)]
+}
+
+function patchMethod(
+	mod: AnyRecord,
+	key: string,
+	cleanup: Cleanup,
+	hook: (args: any[], original: (...a: any[]) => any) => any,
+) {
+	if (typeof mod[key] !== 'function') return
+	const mark = `__hozyToken_${key}`
+	if ((mod as any)[mark]) return
+	;(mod as any)[mark] = true
+	cleanup(instead(mod, key, hook))
 }
 
 function patchCommands(mod: AnyRecord | undefined, cleanup: Cleanup) {
 	if (!mod || patched.has(mod)) return
-	if (typeof mod.getBuiltInCommands !== 'function') return
+	if (
+		typeof mod.getBuiltInCommands !== 'function' &&
+		typeof mod.getCommands !== 'function' &&
+		typeof mod.query !== 'function'
+	)
+		return
 	patched.add(mod)
-	cleanup(after(mod, 'getBuiltInCommands', (_args, res) => injectCommand(res)))
+
+	patchMethod(mod, 'getBuiltInCommands', cleanup, (args, original) => {
+		const res = original(...args)
+		if (!wantsChatCommands(args[0])) return res
+		return injectCommand(res)
+	})
+	patchMethod(mod, 'getCommands', cleanup, (args, original) =>
+		injectCommand(original(...args)),
+	)
+	patchMethod(mod, 'query', cleanup, (args, original) =>
+		injectCommand(original(...args)),
+	)
 }
 
 function patchSendMessage(mod: AnyRecord | undefined, cleanup: Cleanup) {
-	if (!mod || patched.has(mod)) return
-	if (typeof mod.sendMessage !== 'function') return
-	patched.add(mod)
+	if (!mod || typeof mod.sendMessage !== 'function') return
+	if ((mod as any).__hozyTokenSend) return
+	;(mod as any).__hozyTokenSend = true
 	cleanup(
 		instead(mod, 'sendMessage', (args, original) => {
-			const message = args[1]
+			const message = args.length > 1 ? args[1] : args[0]
 			if (messageLooksLikeToken(message) || isTokenText(args[0])) {
 				showTokenAlert()
 				return Promise.resolve({ valid: true, body: {} })
@@ -186,12 +253,30 @@ function patchSendMessage(mod: AnyRecord | undefined, cleanup: Cleanup) {
 	)
 }
 
+function SettingsComponent() {
+	return (
+		<Page>
+			<Design.TableRowGroup title="Token">
+				<Design.TableRow
+					label="Show account token"
+					subLabel="Visible only to you. Never share it."
+					arrow
+					onPress={() => showTokenAlert()}
+				/>
+			</Design.TableRowGroup>
+		</Page>
+	)
+}
+
 export default plugin({
+	SettingsComponent,
 	start({ cleanup, logger }) {
 		logger.log('Hozy Token plugin active.')
 
 		patchSendMessage(findModule('sendMessage', 'editMessage'), cleanup)
+		patchSendMessage(findModule('sendMessage'), cleanup)
 		patchCommands(findModule('getBuiltInCommands'), cleanup)
+		patchCommands(findModule('getCommands'), cleanup)
 
 		cleanup(
 			waitForModules(withProps('getBuiltInCommands'), exports => {
@@ -199,8 +284,31 @@ export default plugin({
 			}),
 		)
 		cleanup(
-			waitForModules(withProps('sendMessage', 'editMessage'), exports => {
+			waitForModules(withProps('getCommands'), exports => {
+				patchCommands(unwrap(exports), cleanup)
+			}),
+		)
+		cleanup(
+			waitForModules(withProps('sendMessage'), exports => {
 				patchSendMessage(unwrap(exports), cleanup)
+			}),
+		)
+		cleanup(
+			waitForModules(withProps('executeCommand'), exports => {
+				const mod = unwrap(exports)
+				if (!mod) return
+				patchMethod(mod, 'executeCommand', cleanup, (args, original) => {
+					const cmd = args[0]
+					if (
+						cmd?.name === COMMAND_NAME ||
+						isTokenText(cmd?.name) ||
+						isTokenText(args[1])
+					) {
+						showTokenAlert()
+						return Promise.resolve()
+					}
+					return original(...args)
+				})
 			}),
 		)
 	},
