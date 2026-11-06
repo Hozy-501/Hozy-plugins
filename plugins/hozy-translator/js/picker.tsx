@@ -1,7 +1,13 @@
-import { useState, useMemo } from 'react'
-import { View, Modal, FlatList, TouchableOpacity, StyleSheet } from 'react-native'
-import { Design } from '@valenced/discord/design'
 import { SearchInput } from '@valenced/components'
+import { Design } from '@valenced/discord/design'
+import { useMemo, useState } from 'react'
+import {
+	FlatList,
+	Modal,
+	StyleSheet,
+	TouchableOpacity,
+	View,
+} from 'react-native'
 import type { LanguageItem } from './languages'
 
 interface LanguagePickerProps {
@@ -32,7 +38,12 @@ export function LanguagePickerModal({
 	}, [languages, query])
 
 	return (
-		<Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+		<Modal
+			visible={visible}
+			animationType="slide"
+			transparent
+			onRequestClose={onClose}
+		>
 			<View style={styles.overlay}>
 				<View style={styles.sheet}>
 					<View style={styles.header}>
@@ -40,14 +51,19 @@ export function LanguagePickerModal({
 							{title}
 						</Design.Text>
 						<TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-							<Design.Text variant="text-md/medium" style={styles.closeTxt}>
-								Close
-							</Design.Text>
+							<Design.Text
+								variant="text-md/medium"
+								style={styles.closeTxt}
+								children="Close"
+							/>
 						</TouchableOpacity>
 					</View>
 
 					<View style={styles.searchWrap}>
-						<SearchInput placeholder="Search languages..." onChange={(v: string) => setQuery(v)} />
+						<SearchInput
+							placeholder="Search languages..."
+							onChange={setQuery}
+						/>
 					</View>
 
 					<FlatList
@@ -72,14 +88,19 @@ export function LanguagePickerModal({
 										>
 											{item.name}
 										</Design.Text>
-										<Design.Text variant="text-sm/normal" style={styles.rowCode}>
+										<Design.Text
+											variant="text-sm/normal"
+											style={styles.rowCode}
+										>
 											{item.code}
 										</Design.Text>
 									</View>
 									{active && (
-										<Design.Text variant="text-md/bold" style={styles.check}>
-											✓
-										</Design.Text>
+										<Design.Text
+											variant="text-md/bold"
+											style={styles.check}
+											children="✓"
+										/>
 									)}
 								</TouchableOpacity>
 							)

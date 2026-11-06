@@ -1,9 +1,14 @@
-import { useState } from 'react'
-import { Design } from '@valenced/discord/design'
 import { Page } from '@valenced/components'
-import type { TranslationService } from './translator'
-import { SOURCE_LANGUAGES, TARGET_LANGUAGES, getLanguageName } from './languages'
+import { Design } from '@valenced/discord/design'
+import { getJsonStorage, pluginStoragePathFor } from '@valenced/json-storage'
+import { useState } from 'react'
+import {
+	getLanguageName,
+	SOURCE_LANGUAGES,
+	TARGET_LANGUAGES,
+} from './languages'
 import { LanguagePickerModal } from './picker'
+import type { TranslationService } from './translator'
 
 export interface TranslatorSettings {
 	service: TranslationService
@@ -17,50 +22,60 @@ export const DEFAULT_SETTINGS: TranslatorSettings = {
 	toLanguage: 'ar',
 }
 
-interface SettingsProps {
-	api: {
-		jsonStorage: {
-			use(): TranslatorSettings | null
-			set(s: Partial<TranslatorSettings>): void
-		}
+let storageInstance:
+	| ReturnType<typeof getJsonStorage<TranslatorSettings>>
+	| undefined
+
+export function getStorage() {
+	if (!storageInstance) {
+		storageInstance = getJsonStorage<TranslatorSettings>(
+			pluginStoragePathFor('com.hozy.translator', 'settings.json'),
+			{ default: DEFAULT_SETTINGS, load: true },
+		)
+	}
+	return storageInstance
+}
+
+export function getSettings(): TranslatorSettings {
+	return {
+		...DEFAULT_SETTINGS,
+		...(getStorage().cache as Partial<TranslatorSettings> | undefined),
 	}
 }
 
-export function SettingsComponent({ api }: SettingsProps) {
-	const s = api.jsonStorage.use() ?? DEFAULT_SETTINGS
+export function SettingsComponent(_props?: { api?: unknown }) {
+	const storage = getStorage()
+	const s = storage.use() ?? DEFAULT_SETTINGS
 	const [pickerType, setPickerType] = useState<'from' | 'to' | null>(null)
 
-	const service = s.service ?? 'google'
-	const fromLang = s.fromLanguage ?? 'auto'
-	const toLang = s.toLanguage ?? 'ar'
+	const service = s.service ?? DEFAULT_SETTINGS.service
+	const fromLang = s.fromLanguage ?? DEFAULT_SETTINGS.fromLanguage
+	const toLang = s.toLanguage ?? DEFAULT_SETTINGS.toLanguage
 
 	return (
 		<Page>
 			<Design.TableRowGroup title="Translation Engine">
 				<Design.TableRadioGroup
 					value={service}
-					onChange={(val: TranslationService) => api.jsonStorage.set({ service: val })}
+					onChange={(val: TranslationService) => storage.set({ service: val })}
 				>
 					<Design.TableRadioRow
 						label="Google Translate"
-						subLabel="Free & fast — no API key needed"
+						subLabel="Free and fast — no API key needed"
 						value="google"
-						selected={service === 'google'}
-						onPress={() => api.jsonStorage.set({ service: 'google' })}
+						onPress={() => storage.set({ service: 'google' })}
 					/>
 					<Design.TableRadioRow
 						label="Microsoft Translator"
 						subLabel="Powered by Edge Translator"
 						value="microsoft"
-						selected={service === 'microsoft'}
-						onPress={() => api.jsonStorage.set({ service: 'microsoft' })}
+						onPress={() => storage.set({ service: 'microsoft' })}
 					/>
 					<Design.TableRadioRow
 						label="Brave Translate"
-						subLabel="Experimental Brave Translate API"
+						subLabel="Falls back automatically if it fails"
 						value="brave"
-						selected={service === 'brave'}
-						onPress={() => api.jsonStorage.set({ service: 'brave' })}
+						onPress={() => storage.set({ service: 'brave' })}
 					/>
 				</Design.TableRadioGroup>
 			</Design.TableRowGroup>
@@ -86,7 +101,7 @@ export function SettingsComponent({ api }: SettingsProps) {
 					title="Source Language"
 					languages={SOURCE_LANGUAGES}
 					selectedCode={fromLang}
-					onSelect={code => api.jsonStorage.set({ fromLanguage: code })}
+					onSelect={code => storage.set({ fromLanguage: code })}
 					onClose={() => setPickerType(null)}
 				/>
 			)}
@@ -97,7 +112,7 @@ export function SettingsComponent({ api }: SettingsProps) {
 					title="Target Language"
 					languages={TARGET_LANGUAGES}
 					selectedCode={toLang}
-					onSelect={code => api.jsonStorage.set({ toLanguage: code })}
+					onSelect={code => storage.set({ toLanguage: code })}
 					onClose={() => setPickerType(null)}
 				/>
 			)}
