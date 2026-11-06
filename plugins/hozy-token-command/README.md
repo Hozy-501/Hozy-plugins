@@ -6,7 +6,7 @@ A Valenced plugin for Discord (Android) that lets you safely extract and view yo
 
 ## Features
 
-**Local `/token` command** — type `/token` in any chat to instantly retrieve your account token
+**Local `/token` command** — type `/token` in chat (it appears in the slash menu) to retrieve your account token
 
 **Ephemeral output** — your token displays inside a clean local embed visible only to you
 
