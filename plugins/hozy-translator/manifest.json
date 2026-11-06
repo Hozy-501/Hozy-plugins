@@ -1,8 +1,8 @@
 {
 	"format": 1,
-	"id": "dev.hozy.translator",
+	"id": "com.hozy.translator",
 	"name": "Hozy's Translator",
-	"description": "Translate any message with a single long-press tap. Result appears only to you as an ephemeral message.",
+	"description": "Hozy's Translator adds a translate action to Discord message menus and shows the result only to you.",
 	"author": "Hozy",
 	"icon": "TranslateIcon",
 	"version": "1.0.0",
@@ -15,6 +15,6 @@
 		}
 	},
 	"dist": {
-		"script": "index.js"
+		"script": "js/index.ts"
 	}
 }
