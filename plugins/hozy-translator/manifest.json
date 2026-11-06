@@ -5,7 +5,7 @@
 	"description": "Hozy's Translator adds a translate action to Discord message menus and shows the result only to you.",
 	"author": "Hozy",
 	"icon": "TranslateIcon",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"dependencies": {
 		"valenced.api": {
 			"version": ">=1 <2"

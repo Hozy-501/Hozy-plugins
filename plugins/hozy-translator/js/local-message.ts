@@ -3,6 +3,13 @@ import { withProps } from '@valenced/modules/finders/filters'
 
 type AnyRecord = Record<string, any>
 
+const DISCORD_EPOCH = 1_420_070_400_000
+const AUTHOR_ID = '1081680102673653840'
+
+function snowflake(now = Date.now()): string {
+	return (BigInt(now - DISCORD_EPOCH) << 22n).toString()
+}
+
 function unwrap(mod: unknown): AnyRecord | undefined {
 	if (!mod || typeof mod !== 'object') return
 	const rec = mod as AnyRecord
@@ -21,63 +28,87 @@ function findModule(prop: string, extra?: string): AnyRecord | undefined {
 	return unwrap(mod)
 }
 
+function isNumericId(value: unknown): value is string {
+	return typeof value === 'string' && /^\d{5,}$/.test(value)
+}
+
+function buildMessage(
+	channelId: string,
+	content: string,
+	embeds: AnyRecord[] | undefined,
+	base?: AnyRecord,
+): AnyRecord {
+	const now = Date.now()
+	const timestamp = new Date(now).toISOString()
+	const id = isNumericId(base?.id) ? base.id : snowflake(now)
+	const author = {
+		id: isNumericId(base?.author?.id) ? base.author.id : AUTHOR_ID,
+		username: "Hozy's Translator",
+		globalName: "Hozy's Translator",
+		discriminator: '0000',
+		avatar: null,
+		bot: true,
+		publicFlags: 0,
+	}
+
+	return {
+		...base,
+		id,
+		type: 0,
+		channel_id: channelId,
+		channelId,
+		content,
+		embeds: embeds ?? base?.embeds ?? [],
+		author: { ...base?.author, ...author },
+		timestamp,
+		edited_timestamp: null,
+		editedTimestamp: null,
+		state: 'SENT',
+		flags: 64,
+		attachments: [],
+		mentions: [],
+		mention_roles: [],
+		mentionRoles: [],
+		mention_everyone: false,
+		mentionEveryone: false,
+		pinned: false,
+		tts: false,
+		components: [],
+		reactions: [],
+		hit: false,
+		nonce: id,
+		loggingName: "Hozy's Translator",
+	}
+}
+
 export function sendLocalMessage(
 	channelId: string,
 	content: string,
 	embeds?: AnyRecord[],
 ) {
-	if (!channelId) return
-
-	const id = `hozy-translate-${Date.now()}`
-	const timestamp = new Date().toISOString()
-	const author = {
-		id: '1',
-		username: "Hozy's Translator",
-		discriminator: '0000',
-		avatar: 'clyde',
-		bot: true,
-	}
+	if (!channelId) return false
 
 	try {
 		const botModule = findModule('createBotMessage')
 		const receiveModule = findModule('receiveMessage') ?? botModule
+		let message: AnyRecord | undefined
 
-		if (
-			typeof botModule?.createBotMessage === 'function' &&
-			typeof receiveModule?.receiveMessage === 'function'
-		) {
-			const message = botModule.createBotMessage({
-				channelId,
-				content,
-				embeds: embeds ?? [],
-				loggingName: "Hozy's Translator",
-			})
-			if (message) {
-				message.author = { ...message.author, ...author }
-				if (embeds?.length) message.embeds = embeds
-				receiveModule.receiveMessage(channelId, message)
-				return
-			}
+		if (typeof botModule?.createBotMessage === 'function') {
+			try {
+				message = botModule.createBotMessage({
+					channelId,
+					content,
+					embeds: embeds ?? [],
+					loggingName: "Hozy's Translator",
+				})
+			} catch {}
 		}
 
+		message = buildMessage(channelId, content, embeds, message)
+
 		if (typeof receiveModule?.receiveMessage === 'function') {
-			receiveModule.receiveMessage(channelId, {
-				id,
-				type: 0,
-				channel_id: channelId,
-				content,
-				embeds: embeds ?? [],
-				author,
-				timestamp,
-				state: 'SENT',
-				flags: 64,
-				attachments: [],
-				mentions: [],
-				pinned: false,
-				mention_everyone: false,
-				tts: false,
-			})
-			return
+			receiveModule.receiveMessage(channelId, message)
+			return true
 		}
 
 		const dispatcher =
@@ -88,25 +119,13 @@ export function sendLocalMessage(
 				channelId,
 				optimistic: true,
 				isPushNotification: false,
-				message: {
-					id,
-					type: 0,
-					channel_id: channelId,
-					content,
-					embeds: embeds ?? [],
-					author,
-					timestamp,
-					state: 'SENT',
-					flags: 64,
-					attachments: [],
-					mentions: [],
-					pinned: false,
-					mention_everyone: false,
-					tts: false,
-				},
+				message,
 			})
+			return true
 		}
 	} catch (error) {
 		console.error("[Hozy's Translator] Failed to send local message:", error)
 	}
+
+	return false
 }

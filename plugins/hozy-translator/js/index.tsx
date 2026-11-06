@@ -180,7 +180,11 @@ function injectTranslateAction(sheetProps: any, res: any) {
 		sheetProps?.messageRecord ??
 		sheetProps?.item?.message ??
 		pendingMessage
-	if (!message || String(message.id ?? '').startsWith('hozy-translate-'))
+	if (
+		!message ||
+		message.loggingName === "Hozy's Translator" ||
+		message.author?.username === "Hozy's Translator"
+	)
 		return res
 	if (alreadyHasTranslate(res)) return res
 
