@@ -236,13 +236,26 @@
       "author": "Hozy",
       "icon": "TranslateIcon",
       "channels": {
-        "latest": "1.0.1"
+        "latest": "1.0.2"
       },
       "versions": {
         "1.0.1": {
           "url": "https://hshs-501.github.io/Hozy-plugins/pool/com.hozy.translator@1.0.1.zip",
           "sha256": "42ee41d49d0ccde4b86d0a1c035bf899b08a238e115bd009aca8be0a813a5814",
           "size": 6888,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "1.0.2": {
+          "url": "https://hshs-501.github.io/Hozy-plugins/pool/com.hozy.translator@1.0.2.zip",
+          "sha256": "cc40cace14fcfcaaf1dd5d059be8026b3f2209ad53e3589ca8d04da039b3ffdc",
+          "size": 7044,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
