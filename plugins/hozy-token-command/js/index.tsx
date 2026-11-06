@@ -6,7 +6,7 @@ import {
 import { Design } from '@valenced/discord/design'
 import { getModules, lookupModule } from '@valenced/modules/finders'
 import { withProps } from '@valenced/modules/finders/filters'
-import { instead } from '@valenced/patcher'
+import { after, HookPriority, instead } from '@valenced/patcher'
 import { createElement } from 'react'
 
 type AnyRecord = Record<string, any>
@@ -16,15 +16,19 @@ const NAME = 'token'
 const APP_ID = '-1'
 const CHAT = 1
 const BUILT_IN = 0
+const LAST = { priority: HookPriority.HIGHEST }
 
-const patched = new WeakSet<object>()
+const seen = new WeakSet<object>()
 
 function asModule(value: unknown): AnyRecord | undefined {
 	if (!value || typeof value !== 'object') return
 	const rec = value as AnyRecord
-	if (typeof rec.getBuiltInCommands === 'function') return rec
-	if (typeof rec.sendMessage === 'function') return rec
-	if (typeof rec.getToken === 'function') return rec
+	if (
+		typeof rec.getBuiltInCommands === 'function' ||
+		typeof rec.sendMessage === 'function' ||
+		typeof rec.getToken === 'function'
+	)
+		return rec
 	if (rec.default && typeof rec.default === 'object')
 		return asModule(rec.default) ?? (rec.default as AnyRecord)
 }
@@ -134,6 +138,9 @@ function commandFrom(list: any[]) {
 		guildId: undefined,
 		target: undefined,
 		dmPermission: true,
+		predicate: () => true,
+		shouldHide: undefined,
+		__bunny: undefined,
 		execute: () => {
 			showToken()
 		},
@@ -143,58 +150,54 @@ function commandFrom(list: any[]) {
 function withTokenCommand(result: unknown) {
 	if (!Array.isArray(result)) return result
 	if (result.some(cmd => cmd?.name === NAME)) return result
-	if (
-		result.length &&
-		!result.some(
-			cmd => cmd && typeof cmd === 'object' && typeof cmd.name === 'string',
-		)
-	)
-		return result
 	return [...result, commandFrom(result)]
-}
-
-function hook(
-	mod: AnyRecord,
-	key: string,
-	cleanup: Cleanup,
-	fn: (this: any, args: any[], original: (...a: any[]) => any) => any,
-) {
-	if (typeof mod[key] !== 'function') return
-	if (patched.has(mod) && (mod as any)[`__hozy_${key}`]) return
-	;(mod as any)[`__hozy_${key}`] = true
-	cleanup(instead(mod, key, fn))
 }
 
 function patchCommands(mod: AnyRecord | undefined, cleanup: Cleanup) {
 	if (!mod || typeof mod.getBuiltInCommands !== 'function') return
-	if (patched.has(mod)) return
-	patched.add(mod)
+	if (seen.has(mod)) return
+	seen.add(mod)
 
-	hook(mod, 'getBuiltInCommands', cleanup, function (args, original) {
-		const res = original.apply(this, args)
-		try {
-			return withTokenCommand(res)
-		} catch (error) {
-			console.error('[Hozy Token] command inject failed:', error)
-			return res
-		}
-	})
+	cleanup(
+		after(
+			mod,
+			'getBuiltInCommands',
+			res => {
+				try {
+					return withTokenCommand(res)
+				} catch (error) {
+					console.error('[Hozy Token] command inject failed:', error)
+					return res
+				}
+			},
+			LAST,
+		),
+	)
 }
 
 function patchSend(mod: AnyRecord | undefined, cleanup: Cleanup) {
 	if (!mod || typeof mod.sendMessage !== 'function') return
-	hook(mod, 'sendMessage', cleanup, function (args, original) {
-		const message = args.length > 1 ? args[1] : args[0]
-		const content =
-			typeof message === 'string'
-				? message
-				: (message?.content ?? message?.text)
-		if (isTokenCommand(content)) {
-			showToken()
-			return Promise.resolve({ valid: true, body: {} })
-		}
-		return original.apply(this, args)
-	})
+	if ((mod as any).__hozySend) return
+	;(mod as any).__hozySend = true
+	cleanup(
+		instead(
+			mod,
+			'sendMessage',
+			function (this: any, args: any[], original: (...a: any[]) => any) {
+				const message = args.length > 1 ? args[1] : args[0]
+				const content =
+					typeof message === 'string'
+						? message
+						: (message?.content ?? message?.text)
+				if (isTokenCommand(content)) {
+					showToken()
+					return Promise.resolve({ valid: true, body: {} })
+				}
+				return original.apply(this, args)
+			},
+			LAST,
+		),
+	)
 }
 
 function attach(cleanup: Cleanup) {
@@ -223,9 +226,9 @@ function SettingsComponent() {
 			</Design.TableRowGroup>
 			<Design.TableRowGroup
 				title="How to use"
-				description="Type /token in any chat, or tap the row above."
+				description="Type /token in any chat, or tap the row above. Works alongside other built-in command plugins."
 			>
-				<Design.TableRow label="/token" subLabel="Built-in local command" />
+				<Design.TableRow label="/token" subLabel="Local command" />
 			</Design.TableRowGroup>
 		</Page>
 	)
@@ -234,14 +237,14 @@ function SettingsComponent() {
 export default plugin({
 	SettingsComponent,
 	init({ cleanup, logger }) {
-		logger.log('Hozy Token 2.0 init')
+		logger.log('Hozy Token 2.0.1 init')
 		attach(cleanup)
 	},
 	start({ cleanup, logger }) {
-		logger.log('Hozy Token 2.0 start')
+		logger.log('Hozy Token 2.0.1 start')
 		attach(cleanup)
 	},
 	stop({ logger }) {
-		logger.log('Hozy Token 2.0 stop')
+		logger.log('Hozy Token 2.0.1 stop')
 	},
 })
