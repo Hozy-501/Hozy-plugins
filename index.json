@@ -273,7 +273,7 @@
       "author": "Hozy",
       "icon": "VoiceIcon",
       "channels": {
-        "latest": "1.0.2"
+        "latest": "1.0.3"
       },
       "versions": {
         "1.0.0": {
@@ -306,6 +306,19 @@
           "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.voice-transcriber@1.0.2.zip",
           "sha256": "1e7177ca27f1198be4f6b514b9831ae19d67bdee79ac7ae191c19006d92a512f",
           "size": 9647,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "1.0.3": {
+          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.voice-transcriber@1.0.3.zip",
+          "sha256": "b633ec471ad6cd955091c356d5208d55b6eb54fc3f79b43b668bca52d2a29a70",
+          "size": 9700,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
