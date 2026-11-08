@@ -228,6 +228,14 @@ async function transcribeMultipart(
 		if (model) form.append('model', model)
 		form.append('response_format', 'json')
 		if (lang && lang !== 'auto') form.append('language', lang)
+		// Vocab primer: forces Arabic decoding even for Saudi dialect
+		// clips where auto-detect misfires (e.g. as Icelandic).
+		if (lang === 'ar' || lang === 'ar-SA') {
+			form.append(
+				'prompt',
+				'مرحباً، هلا، وش العلوم، كيف حالك، هذا اختبار باللغة العربية',
+			)
+		}
 
 		const headers: Record<string, string> = {}
 		if (apiKey) headers.Authorization = `Bearer ${apiKey}`

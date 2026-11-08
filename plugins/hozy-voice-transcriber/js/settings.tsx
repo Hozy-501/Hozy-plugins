@@ -15,6 +15,8 @@ export interface VoiceTranscriberSettings {
 	customEndpoint: string
 	model: string
 	language: string
+	forceArabic: boolean
+	showPopup: boolean
 }
 
 export const DEFAULT_SETTINGS: VoiceTranscriberSettings = {
@@ -22,7 +24,9 @@ export const DEFAULT_SETTINGS: VoiceTranscriberSettings = {
 	apiKey: '',
 	customEndpoint: '',
 	model: '',
-	language: 'auto',
+	language: 'ar',
+	forceArabic: true,
+	showPopup: true,
 }
 
 let storageInstance:
@@ -83,7 +87,9 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 	const apiKey = s.apiKey ?? ''
 	const customEndpoint = s.customEndpoint ?? ''
 	const model = s.model ?? ''
-	const language = s.language ?? 'auto'
+	const language = s.language ?? 'ar'
+	const forceArabic = s.forceArabic ?? true
+	const showPopup = s.showPopup ?? true
 
 	return (
 		<Page>
@@ -164,7 +170,7 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 
 			<Design.TableRowGroup
 				title="Advanced"
-				description="Leave model empty for provider default. Tap the language row to pick a hint (auto = detect automatically)."
+				description="Force Arabic ON = always decode as Arabic (fix Saudi dialect mis-detected as Icelandic). Tap any row to toggle."
 			>
 				<TextField
 					placeholder="Model (optional, e.g. whisper-large-v3-turbo)"
@@ -176,6 +182,22 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 					subLabel={getLanguageName(language)}
 					arrow
 					onPress={() => setShowLangPicker(true)}
+				/>
+				<Design.TableRow
+					label="Force Arabic"
+					subLabel={forceArabic ? 'ON — always Arabic (dialect-safe)' : 'OFF — use hint above'}
+					arrow
+					onPress={() => {
+						const next = !forceArabic
+						storage.set({ forceArabic: next })
+						if (next) storage.set({ language: 'ar' })
+					}}
+				/>
+				<Design.TableRow
+					label="Show transcript popup"
+					subLabel={showPopup ? 'ON — show Copy popup' : 'OFF — chat message only'}
+					arrow
+					onPress={() => storage.set({ showPopup: !showPopup })}
 				/>
 			</Design.TableRowGroup>
 
@@ -192,7 +214,7 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 
 			<Design.TableRowGroup
 				title="How to use"
-				description="Long-press any voice message → Transcribe. The transcript appears as a local message only you can see, plus a popup with Copy. To translate it, install Hozy's Translator too and tap its Translate action on the transcript. Re-pressing Transcribe on the same message loads from cache instantly (100 entries max)."
+				description="Long-press any voice message → Transcribe. The transcript appears as a local message only you can see (plus a Copy popup if enabled). To translate it, install Hozy's Translator too and tap its Translate action on the transcript. Re-pressing Transcribe on the same message loads from cache instantly (100 entries max)."
 			>
 				<Design.TableRow label="Transcribe" subLabel="Local only" />
 				<Design.TableRow

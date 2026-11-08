@@ -127,7 +127,13 @@ async function runTranscribe(message: any) {
 	}
 
 	const settings = getSettings()
-	const key = cacheKey(String(message?.id ?? ''), audio.url)
+	// Force Arabic (dialect-safe): override the language hint so Whisper
+	// decodes as Arabic instead of mis-detecting Saudi dialect as e.g. Icelandic.
+	const effectiveLanguage = settings.forceArabic
+		? 'ar'
+		: ((settings.language || 'auto').trim() || 'auto')
+	const effectiveSettings = { ...settings, language: effectiveLanguage }
+	const key = cacheKey(String(message?.id ?? ''), audio.url, effectiveLanguage)
 	const cached = getCached(key)
 
 	if (cached && cached.text && cached.text.trim()) {
@@ -151,14 +157,14 @@ async function runTranscribe(message: any) {
 				},
 			])
 		}
-		showTranscriptAlert(transcript)
+		if (settings.showPopup ?? true) showTranscriptAlert(transcript)
 		return
 	}
 
 	showToast('hozy-voice-working', 'Transcribing…')
 
 	try {
-		const result = await transcribeAudio(audio, settings)
+		const result = await transcribeAudio(audio, effectiveSettings)
 		const transcript = result.text.trim()
 		if (!transcript) {
 			showToast('hozy-voice-empty', 'Transcription returned empty text. Try again.', 'critical')
@@ -180,7 +186,7 @@ async function runTranscribe(message: any) {
 
 		if (!channelId) {
 			showToast('hozy-voice-result', transcript, 'success')
-			showTranscriptAlert(transcript)
+			if (settings.showPopup ?? true) showTranscriptAlert(transcript)
 			return
 		}
 
@@ -196,7 +202,7 @@ async function runTranscribe(message: any) {
 			},
 		])
 
-		showTranscriptAlert(transcript)
+		if (settings.showPopup ?? true) showTranscriptAlert(transcript)
 
 		if (!sent) {
 			showToast('hozy-voice-result', transcript, 'success')

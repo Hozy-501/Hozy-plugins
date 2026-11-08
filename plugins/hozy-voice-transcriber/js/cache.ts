@@ -23,11 +23,18 @@ export function getCacheStorage() {
 	return cacheStorage
 }
 
-export function cacheKey(messageId: string | undefined, url: string): string {
+export function cacheKey(
+	messageId: string | undefined,
+	url: string,
+	languageHint?: string,
+): string {
 	const mid = (messageId ?? '').trim() || 'no-id'
 	// keep url short but unique — strip query params to stay stable
 	const clean = url.split('?')[0] ?? url
-	return `${mid}:${clean}`
+	const lang = (languageHint ?? 'auto').trim() || 'auto'
+	// Include language so forcing Arabic doesn't return the old
+	// mis-detected (e.g. Icelandic) cached entry.
+	return `${lang}:${mid}:${clean}`
 }
 
 export function getCached(key: string): CacheEntry | undefined {

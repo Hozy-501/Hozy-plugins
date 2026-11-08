@@ -5,7 +5,7 @@
 	"description": "Hozy's Voice Transcriber converts Discord voice messages to text with one long-press action and shows the result only to you.",
 	"author": "Hozy",
 	"icon": "VoiceIcon",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"dependencies": {
 		"valenced.api": {
 			"version": ">=1 <2"
