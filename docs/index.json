@@ -230,6 +230,30 @@
         }
       }
     },
+    "com.hozy.chatbot": {
+      "name": "Hozy's Chatbot",
+      "description": "Hozy's Chatbot answers you in Discord with one /ask command — local-only, markdown, reads links and images.",
+      "author": "Hozy",
+      "icon": "ChatIcon",
+      "channels": {
+        "latest": "1.0.0"
+      },
+      "versions": {
+        "1.0.0": {
+          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.chatbot@1.0.0.zip",
+          "sha256": "cbfe0ab59d3acdcc065ffc44ab7f73d3ac98fe78b3896ab0533d1d577cd0eb70",
+          "size": 6232,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
     "com.hozy.ghost-messages": {
       "name": "Hozy's Ghost Messages",
       "description": "Hozy's Ghost Messages saves edited and deleted messages locally, even after you restart the app.",
