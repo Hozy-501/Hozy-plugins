@@ -1,4 +1,4 @@
-export type OcrLanguage = 'all' | 'ara' | 'eng'
+export type OcrLanguage = string
 
 export interface OcrSettings {
 	apiKey: string
@@ -137,7 +137,9 @@ export async function runOcr(
 	const data = await downloadWithFallback(image)
 	const apiKey = (settings.apiKey || '').trim() || DEMO_KEY
 	const language =
-		settings.language === 'all' ? 'eng+ara' : settings.language === 'ara' ? 'ara' : 'eng'
+		settings.language === 'all'
+			? 'eng+ara'
+			: (settings.language || 'eng+ara').trim() || 'eng+ara'
 
 	const filename = normalizeFilename(image.filename)
 	const contentType = image.contentType || 'image/png'

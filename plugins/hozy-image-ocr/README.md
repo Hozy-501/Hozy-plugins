@@ -9,7 +9,7 @@ A Valenced plugin for Discord (Android) that extracts text from any image attach
 ## Features
 
 - **Long-press to extract** — hold any image message, then hit *Extract Text* in the action sheet
-- **Arabic + English** — OCR language setting (All / Arabic / English) for accuracy
+- **40+ OCR languages** — searchable picker (Arabic, English, French, German, Spanish, Japanese, Chinese, and more); **All** covers mixed Arabic + English
 - **Works out of the box** — uses OCR.space free demo key; paste your own key in Settings for higher limits
 - **Local-only output** — the text appears as a local message visible only to you, plus a Copy popup
 - **Cache (100 max)** — re-pressing *Extract Text* on the same image loads instantly from device storage
@@ -45,7 +45,7 @@ Go to **Settings → Valenced → Plugins → Hozy's Image OCR → Settings**
 
 | Option | Description |
 |---|---|
-| OCR Language | **All** (Arabic + English, recommended), **Arabic only**, or **English only** |
+| OCR Language | **All** (Arabic + English, recommended) or any of 40+ languages via searchable picker |
 | API Key (optional) | Leave empty for the free demo key. Paste your own key from `ocr.space` for higher limits |
 | Show transcript popup | Toggle the **Extracted Text + Copy** popup on/off |
 

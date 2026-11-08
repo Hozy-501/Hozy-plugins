@@ -5,7 +5,7 @@
 	"description": "Hozy's Image OCR extracts text from any image in Discord with one long-press action and shows the result only to you.",
 	"author": "Hozy",
 	"icon": "TextIcon",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"dependencies": {
 		"valenced.api": {
 			"version": ">=1 <2"

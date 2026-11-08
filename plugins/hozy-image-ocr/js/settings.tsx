@@ -10,6 +10,8 @@ import {
 	View,
 } from 'react-native'
 import { clearCache } from './cache'
+import { getLanguageName, OCR_LANGUAGES } from './languages'
+import { LanguagePickerModal } from './picker'
 import type { OcrLanguage } from './ocr'
 
 export interface ImageOcrSettings {
@@ -76,6 +78,7 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 	const storage = getStorage()
 	const s = storage.use() ?? DEFAULT_SETTINGS
 	const [showKey, setShowKey] = useState(false)
+	const [showLangPicker, setShowLangPicker] = useState(false)
 
 	const apiKey = s.apiKey ?? ''
 	const language = s.language ?? 'all'
@@ -89,30 +92,16 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 				keyboardShouldPersistTaps="handled"
 				showsVerticalScrollIndicator={true}
 			>
-				<Design.TableRowGroup title="OCR Language">
-					<Design.TableRadioGroup
-						value={language}
-						onChange={(val: OcrLanguage) => storage.set({ language: val })}
-					>
-						<Design.TableRadioRow
-							label="All languages"
-							subLabel="Arabic + English (recommended)"
-							value="all"
-							onPress={() => storage.set({ language: 'all' as OcrLanguage })}
-						/>
-						<Design.TableRadioRow
-							label="Arabic only"
-							subLabel="Best for Arabic screenshots"
-							value="ara"
-							onPress={() => storage.set({ language: 'ara' as OcrLanguage })}
-						/>
-						<Design.TableRadioRow
-							label="English only"
-							subLabel="Best for English screenshots"
-							value="eng"
-							onPress={() => storage.set({ language: 'eng' as OcrLanguage })}
-						/>
-					</Design.TableRadioGroup>
+				<Design.TableRowGroup
+					title="OCR Language"
+					description="Tap to search 40+ languages. 'All' covers Arabic + English."
+				>
+					<Design.TableRow
+						label="Document language"
+						subLabel={getLanguageName(language)}
+						arrow
+						onPress={() => setShowLangPicker(true)}
+					/>
 				</Design.TableRowGroup>
 
 				<Design.TableRowGroup
@@ -157,6 +146,17 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 					/>
 				</Design.TableRowGroup>
 			</ScrollView>
+
+			{showLangPicker && (
+				<LanguagePickerModal
+					visible={showLangPicker}
+					title="OCR Language"
+					languages={OCR_LANGUAGES}
+					selectedCode={language}
+					onSelect={code => storage.set({ language: code })}
+					onClose={() => setShowLangPicker(false)}
+				/>
+			)}
 		</Page>
 	)
 }
