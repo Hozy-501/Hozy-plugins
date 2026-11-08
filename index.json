@@ -236,7 +236,7 @@
       "author": "Hozy",
       "icon": "HistoryIcon",
       "channels": {
-        "latest": "1.1.0"
+        "latest": "1.2.0"
       },
       "versions": {
         "1.0.0": {
@@ -256,6 +256,19 @@
           "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.ghost-messages@1.1.0.zip",
           "sha256": "8dd889d92f0abc9bd5ced58766734caee78135827edc3f4b49772212d22be100",
           "size": 5152,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "1.2.0": {
+          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.ghost-messages@1.2.0.zip",
+          "sha256": "feb8418fac68f3474ffc61427abbd0811710474a90448bc0f579306c140f8b0a",
+          "size": 6729,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
