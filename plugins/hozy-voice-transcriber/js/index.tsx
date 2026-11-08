@@ -58,11 +58,11 @@ function copyText(text: string): boolean {
 					: null
 		if (setFn) {
 			setFn.call(api?.default ?? api, text)
-			showToast('hozy-voice-copied', 'تم نسخ النص ✓', 'success')
+			showToast('hozy-voice-copied', 'Text copied ✓', 'success')
 			return true
 		}
 	} catch {}
-	showToast('hozy-voice-copy-fail', 'تعذر النسخ — انسخ النص من الرسالة', 'critical')
+	showToast('hozy-voice-copy-fail', 'Could not copy — copy it from the message', 'critical')
 	return false
 }
 
@@ -71,15 +71,15 @@ function showTranscriptAlert(text: string) {
 		AlertActionCreators.openAlert(
 			'hozy-voice-transcript',
 			createElement(Design.AlertModal, {
-				title: 'تفريغ صوتي (Voice Transcription)',
-				content: 'فقط أنت تراه. يمكنك ترجمته بـ Hozy\'s Translator.',
+				title: 'Voice Transcription',
+				content: "Only you can see this. Translate it with Hozy's Translator.",
 				extraContent: createElement(Design.Text, {
 					variant: 'text-sm/medium',
 					selectable: true,
 					children: text,
 				}),
 				actions: createElement(Design.AlertActionButton, {
-					text: 'Copy / نسخ',
+					text: 'Copy',
 					variant: 'primary',
 					onPress: () => {
 						copyText(text)
@@ -94,36 +94,35 @@ function showTranscriptAlert(text: string) {
 	}
 }
 
-// ---------- Arabic error messages ----------
-function toArabicError(msg: string): string {
+// ---------- Error messages (English) ----------
+function formatError(msg: string): string {
 	const m = (msg || '').toLowerCase()
 
-	if (m.includes('api key') || m.includes('401') || m.includes('403') || m.includes('invalid')) {
-		return 'المفتاح غير صحيح أو مفقود. الصق مفتاح Groq في إعدادات البلقن.'
+	if (m.includes('api key') || m.includes('401') || m.includes('invalid')) {
+		return 'Invalid or missing API key. Paste your Groq key in plugin settings.'
 	}
 	if (m.includes('empty') || m.includes('returned')) {
-		return 'الخدمة رجعت نص فارغ. جرب مرة ثانية.'
+		return 'Transcription returned empty text. Try again.'
 	}
-	if (m.includes('download') || m.includes('network') || m.includes('fetch')) {
-		return 'فشل تحميل الصوت أو الاتصال. تحقق من الإنترنت.'
+	if (m.includes('download failed') || m.includes('network')) {
+		// Keep the technical detail (HTTP status / network reason) for debugging
+		return (msg || 'Audio download failed').slice(0, 120)
 	}
-	if (m.includes('failed (5') || m.includes('503') || m.includes('queue is full') || m.includes('rate')) {
-		return 'الخدمة المجانية مشغولة الآن. انتظر دقيقة أو أضف مفتاح Groq.'
+	if (m.includes('503') || m.includes('queue is full') || m.includes('rate')) {
+		return 'Service is busy right now. Wait a minute or add a Groq key.'
 	}
 	if (m.includes('custom endpoint')) {
-		return 'رابط الـ endpoint المخصص فارغ في الإعدادات.'
+		return 'Custom endpoint URL is empty in Settings.'
 	}
 
-	// Unknown — keep a short Arabic lead + original (truncated)
-	const short = (msg || '').slice(0, 80)
-	return short ? `حدث خطأ: ${short}` : 'حدث خطأ غير معروف.'
+	return (msg || 'Transcription failed').slice(0, 120)
 }
 
 async function runTranscribe(message: any) {
 	const channelId = String(message?.channel_id ?? message?.channelId ?? '')
 	const audio = getVoiceAudio(message)
 	if (!audio) {
-		showToast('hozy-voice-not-voice', 'هذه ليست رسالة صوتية.', 'critical')
+		showToast('hozy-voice-not-voice', 'Not a voice message.', 'critical')
 		return
 	}
 
@@ -137,7 +136,7 @@ async function runTranscribe(message: any) {
 		const header = `**Transcription${langPart} (from cache)**`
 		const body = `${header}\n${transcript}`
 
-		showToast('hozy-voice-cached', 'تم من الذاكرة ✓', 'success')
+		showToast('hozy-voice-cached', 'Loaded from cache ✓', 'success')
 
 		if (channelId) {
 			sendLocalMessage(channelId, body, [
@@ -156,13 +155,13 @@ async function runTranscribe(message: any) {
 		return
 	}
 
-	showToast('hozy-voice-working', 'جاري التفريغ…')
+	showToast('hozy-voice-working', 'Transcribing…')
 
 	try {
 		const result = await transcribeAudio(audio, settings)
 		const transcript = result.text.trim()
 		if (!transcript) {
-			showToast('hozy-voice-empty', 'الخدمة رجعت نص فارغ. جرب مرة ثانية.', 'critical')
+			showToast('hozy-voice-empty', 'Transcription returned empty text. Try again.', 'critical')
 			return
 		}
 
@@ -204,7 +203,7 @@ async function runTranscribe(message: any) {
 		}
 	} catch (error) {
 		const msg = error instanceof Error ? error.message : 'Transcription failed'
-		showToast('hozy-voice-error', toArabicError(msg), 'critical')
+		showToast('hozy-voice-error', formatError(msg), 'critical')
 	}
 }
 

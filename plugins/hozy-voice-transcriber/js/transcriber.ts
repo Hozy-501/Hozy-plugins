@@ -21,6 +21,7 @@ export interface TranscriptionResult {
 
 export interface VoiceAudio {
 	url: string
+	proxyUrl?: string
 	filename: string
 	contentType: string
 }
@@ -54,8 +55,10 @@ export function getVoiceAudio(message: any): VoiceAudio | null {
 
 	for (const att of candidates) {
 		if (!att || typeof att !== 'object') continue
-		const url = firstString(att.url, att.proxy_url, att.src, att.href)
-		if (!url) continue
+		const url = firstString(att.url, att.src, att.href)
+		const proxyUrl = firstString(att.proxy_url)
+		const bestUrl = url ?? proxyUrl
+		if (!bestUrl) continue
 		const filename = firstString(att.filename, att.name, att.fileName) ?? 'voice.ogg'
 		const contentType =
 			firstString(att.content_type, att.contentType, att.mimetype) ?? ''
@@ -67,11 +70,12 @@ export function getVoiceAudio(message: any): VoiceAudio | null {
 		const isVoiceFlag = Number.isFinite(flags) && (flags & VOICE_FLAG) !== 0
 
 		const isAudioType = contentType.toLowerCase().startsWith('audio/')
-		const isAudioExt = AUDIO_EXT.test(filename) || AUDIO_EXT.test(url.split('?')[0] ?? '')
+		const isAudioExt = AUDIO_EXT.test(filename) || AUDIO_EXT.test(bestUrl.split('?')[0] ?? '')
 
 		if (isAudioType || isAudioExt || hasDuration || hasWaveform || isVoiceFlag) {
 			return {
-				url,
+				url: bestUrl,
+				proxyUrl,
 				filename,
 				contentType: contentType || 'audio/ogg',
 			}
@@ -102,20 +106,54 @@ export function normalizeFilename(name: string): string {
 		: `${safe}.ogg`
 }
 
-async function downloadAudio(url: string): Promise<Blob | ArrayBuffer> {
-	const response = await fetch(url)
-	if (!response.ok) {
-		throw new Error(`Audio download failed (${response.status})`)
+async function downloadAudio(url: string): Promise<ArrayBuffer> {
+	// Discord CDN blocks plain fetch in some Android builds — it wants a
+	// User-Agent + Accept header. Hermes also lacks response.blob(),
+	// so use arrayBuffer() FIRST (blob() fallback only).
+	const headers: Record<string, string> = {
+		Accept: 'audio/*,*/*;q=0.9',
+		'User-Agent':
+			'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Chrome/120 Safari/537.36',
 	}
-	// Prefer arrayBuffer for binary POST (HuggingFace) and Blob for FormData
+
+	let response: Response
 	try {
-		return await response.blob()
-	} catch {
+		response = await fetch(url, { method: 'GET', headers } as any)
+	} catch (networkError) {
+		const msg = networkError instanceof Error ? networkError.message : 'network error'
+		throw new Error(`Audio download failed (network: ${msg}) — check your internet`)
+	}
+
+	if (!response.ok) {
+		throw new Error(`Audio download failed (${response.status}) for ${url.slice(0, 80)}`)
+	}
+
+	try {
 		return await response.arrayBuffer()
+	} catch {
+		// Last resort for runtimes without arrayBuffer support
+		const blob = await (response as any).blob()
+		const buf = await blob.arrayBuffer()
+		return buf as ArrayBuffer
 	}
 }
 
-function ensureBlob(data: Blob | ArrayBuffer, type: string): any {
+async function downloadAudioWithFallback(audio: VoiceAudio): Promise<ArrayBuffer> {
+	let lastError: unknown
+	const urls = [audio.url, audio.proxyUrl].filter(Boolean) as string[]
+	// de-dupe
+	const unique = [...new Set(urls)]
+	for (const candidate of unique) {
+		try {
+			return await downloadAudio(candidate)
+		} catch (error) {
+			lastError = error
+		}
+	}
+	throw lastError instanceof Error ? lastError : new Error('Audio download failed')
+}
+
+function ensureBlob(data: ArrayBuffer | Blob, type: string): any {
 	// React Native exposes Blob; in Hermes, Blob constructor may exist
 	try {
 		if (typeof Blob !== 'undefined' && data instanceof Blob) return data
@@ -131,7 +169,7 @@ function ensureBlob(data: Blob | ArrayBuffer, type: string): any {
 }
 
 async function transcribeHuggingFace(
-	data: Blob | ArrayBuffer,
+	data: ArrayBuffer | Blob,
 	settings: TranscriberSettings,
 ): Promise<TranscriptionResult> {
 	const model = (settings.model || 'openai/whisper-large-v3').trim()
@@ -172,36 +210,51 @@ async function transcribeMultipart(
 	endpoint: string,
 	apiKey: string,
 	model: string,
-	data: Blob | ArrayBuffer,
-	filename: string,
-	contentType: string,
+	audio: VoiceAudio,
+	data: ArrayBuffer | Blob,
 	settings: TranscriberSettings,
 ): Promise<TranscriptionResult> {
-	const form = new FormData() as any
+	const filename = normalizeFilename(audio.filename)
+	const contentType = audio.contentType || 'audio/ogg'
+	const lang = (settings.language || '').trim()
 
-	const fileField: any = ensureBlob(data as any, contentType || 'audio/ogg')
+	async function doFetch(fileField: any): Promise<Response> {
+		const form = new FormData() as any
+		try {
+			form.append('file', fileField, filename)
+		} catch {
+			form.append('file', fileField)
+		}
+		if (model) form.append('model', model)
+		form.append('response_format', 'json')
+		if (lang && lang !== 'auto') form.append('language', lang)
 
-	// React Native FormData accepts {uri,name,type} OR Blob depending on runtime.
-	// Try Blob first, fall back to uri object is not possible here (we have bytes).
-	try {
-		form.append('file', fileField, normalizeFilename(filename))
-	} catch {
-		form.append('file', fileField)
+		const headers: Record<string, string> = {}
+		if (apiKey) headers.Authorization = `Bearer ${apiKey}`
+
+		return await fetch(endpoint, {
+			method: 'POST',
+			headers,
+			body: form,
+		} as any)
 	}
 
-	if (model) form.append('model', model)
-	form.append('response_format', 'json')
-	const lang = (settings.language || '').trim()
-	if (lang && lang !== 'auto') form.append('language', lang)
-
-	const headers: Record<string, string> = {}
-	if (apiKey) headers.Authorization = `Bearer ${apiKey}`
-
-	const response = await fetch(endpoint, {
-		method: 'POST',
-		headers,
-		body: form,
-	} as any)
+	let response: Response
+	try {
+		// 1st attempt: Blob built from downloaded bytes
+		const blobField = ensureBlob(data as any, contentType)
+		response = await doFetch(blobField)
+	} catch (firstError) {
+		// React Native FormData often refuses Blob — retry with the RN
+		// {uri, name, type} file object pointing at the CDN URL directly.
+		console.warn('[Hozy Voice] Blob upload failed, retrying with uri:', firstError)
+		try {
+			response = await doFetch({ uri: audio.url, name: filename, type: contentType })
+		} catch (secondError) {
+			const msg = secondError instanceof Error ? secondError.message : String(secondError)
+			throw new Error(`Transcription upload failed (${msg})`)
+		}
+	}
 
 	if (!response.ok) {
 		const bodyText = await response.text().catch(() => '')
@@ -227,7 +280,7 @@ export async function transcribeAudio(
 	audio: VoiceAudio,
 	settings: TranscriberSettings,
 ): Promise<TranscriptionResult> {
-	const data = await downloadAudio(audio.url)
+	const data = await downloadAudioWithFallback(audio)
 	const provider = settings.provider || 'auto'
 
 	// User asked: try without key first. So auto = keyless HuggingFace attempt.
@@ -245,9 +298,8 @@ export async function transcribeAudio(
 			'https://api.groq.com/openai/v1/audio/transcriptions',
 			(settings.apiKey || '').trim(),
 			model,
+			audio,
 			data,
-			audio.filename,
-			audio.contentType,
 			settings,
 		)
 	}
@@ -258,9 +310,8 @@ export async function transcribeAudio(
 			'https://api.openai.com/v1/audio/transcriptions',
 			(settings.apiKey || '').trim(),
 			model,
+			audio,
 			data,
-			audio.filename,
-			audio.contentType,
 			settings,
 		)
 	}
@@ -273,9 +324,8 @@ export async function transcribeAudio(
 		endpoint,
 		(settings.apiKey || '').trim(),
 		model,
+		audio,
 		data,
-		audio.filename,
-		audio.contentType,
 		settings,
 	)
 }
