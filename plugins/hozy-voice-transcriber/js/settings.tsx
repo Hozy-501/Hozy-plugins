@@ -2,7 +2,13 @@ import { Page } from '@valenced/components'
 import { Design } from '@valenced/discord/design'
 import { getJsonStorage, pluginStoragePathFor } from '@valenced/json-storage'
 import { useState } from 'react'
-import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native'
+import {
+	ScrollView,
+	StyleSheet,
+	TextInput,
+	TouchableOpacity,
+	View,
+} from 'react-native'
 import { clearCache } from './cache'
 import { getLanguageName, SOURCE_LANGUAGES } from './languages'
 import { LanguagePickerModal } from './picker'
@@ -93,7 +99,13 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 
 	return (
 		<Page>
-			<Design.TableRowGroup title="Transcription Provider">
+			<ScrollView
+				style={styles.scroll}
+				contentContainerStyle={styles.scrollContent}
+				keyboardShouldPersistTaps="handled"
+				showsVerticalScrollIndicator={true}
+			>
+				<Design.TableRowGroup title="Transcription Provider">
 				<Design.TableRadioGroup
 					value={provider}
 					onChange={(val: TranscriptionProvider) => storage.set({ provider: val })}
@@ -224,11 +236,14 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 					onPress={() => clearCache()}
 				/>
 			</Design.TableRowGroup>
+			</ScrollView>
 		</Page>
 	)
 }
 
 const styles = StyleSheet.create({
+	scroll: { flex: 1 },
+	scrollContent: { paddingBottom: 48 },
 	fieldWrap: {
 		paddingHorizontal: 16,
 		paddingVertical: 8,
