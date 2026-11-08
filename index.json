@@ -230,6 +230,30 @@
         }
       }
     },
+    "com.hozy.ghost-messages": {
+      "name": "Hozy's Ghost Messages",
+      "description": "Hozy's Ghost Messages saves edited and deleted messages locally, even after you restart the app.",
+      "author": "Hozy",
+      "icon": "HistoryIcon",
+      "channels": {
+        "latest": "1.0.0"
+      },
+      "versions": {
+        "1.0.0": {
+          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.ghost-messages@1.0.0.zip",
+          "sha256": "b34ac1fe60ad62212f8f3ea38d175426fb1f5847be7056fc1e4f575e10eb8c95",
+          "size": 2903,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
     "com.hozy.image-ocr": {
       "name": "Hozy's Image OCR",
       "description": "Hozy's Image OCR extracts text from any image in Discord with one long-press action and shows the result only to you.",
