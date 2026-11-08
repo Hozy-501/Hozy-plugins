@@ -9,11 +9,14 @@ A Valenced plugin for Discord (Android) that saves **edited** and **deleted** me
 ## Features
 
 - **Ghost log (200 events)** — every edit (`old → new`) and delete is saved on your device (`ghosts.json`)
+- **Archive by person** — grouped by author (nickname + `@username`), tap a person to open their archive
+- **Search + multi-filters** — search by username/nickname/text, filter by Edits / Deletes / Media / Voice / Links / Favorites (multiple at once)
+- **Media + voice + links** — entries remember attachments, 🎤 voice flags, and 🔗 links (links may expire like CDN)
+- **Favorites (⭐)** — star any ghost, then filter only ⭐ across everyone
 - **Survives restarts** — stored via Valenced JSON storage, not in-memory
 - **Recent cache (500 messages)** — remembers each message's last content so deletes/edits can be logged
-- **Optional toasts** — get a quick `🗑 Deleted by …` / `✏️ Edited by …` toast when it happens
-- **Settings page** — see the last 20 ghosts (author, snippet, time), clear log or everything
-- **Clean teardown** — patches removed when the plugin is disabled, no leaks
+- **Optional toasts** — quick `🗑 Deleted by …` / `✏️ Edited by …` alerts
+- **Light & local** — no server, no uploads; clean teardown on disable
 
 ---
 
@@ -46,7 +49,10 @@ Go to **Settings → Valenced → Plugins → Hozy's Ghost Messages → Settings
 | Option | Description |
 |---|---|
 | Notify on delete / Notify on edit | Toggle the toast alerts on/off |
-| Saved ghosts | List of the last 20 saved events |
+| Archive — by person | Expand a person to see their edits/deletes with date, media, voice, links |
+| Search | By username, nickname, or text |
+| Filters (multi-select) | Edits / Deletes / Media / Voice / Links / Favorites |
+| ⭐ Favorite | Star any ghost; filter ⭐ to see only favorites |
 | Clear ghost log | Removes the saved events (keeps tracking) |
 | Clear everything | Removes log + message cache |
 

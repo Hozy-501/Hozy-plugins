@@ -5,7 +5,7 @@
 	"description": "Hozy's Ghost Messages saves edited and deleted messages locally, even after you restart the app.",
 	"author": "Hozy",
 	"icon": "HistoryIcon",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"dependencies": {
 		"valenced.api": {
 			"version": ">=1 <2"

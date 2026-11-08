@@ -2,7 +2,14 @@ import { ToastActionCreators } from '@valenced/discord/actions'
 import { lookupModule } from '@valenced/modules/finders'
 import { withProps } from '@valenced/modules/finders/filters'
 import { instead } from '@valenced/patcher'
-import { getGhostStorage, trackCreate, trackDelete, trackEdit } from './ghost'
+import {
+	type AttachmentInfo,
+	getGhostStorage,
+	hasLinkIn,
+	trackCreate,
+	trackDelete,
+	trackEdit,
+} from './ghost'
 import { getSettings, getStorage, SettingsComponent } from './settings'
 
 type AnyRecord = Record<string, any>
@@ -52,10 +59,68 @@ function contentOf(msg: any): string {
 	return ''
 }
 
-function authorOf(msg: any): string {
+function extractAuthor(msg: any): { author: string; displayName?: string; authorId?: string } {
 	const a = msg?.author
-	if (!a) return 'Unknown'
-	return firstString(a.username, a.name, a.id) ?? 'Unknown'
+	if (!a) return { author: 'Unknown' }
+	const username = firstString(a.username, a.name, a.id) ?? 'Unknown'
+	const displayName = firstString(
+		a.globalName,
+		a.global_name,
+		a.displayName,
+		a.display_name,
+		a.nickname,
+	)
+	const authorId = firstString(a.id)
+	return { author: username, displayName, authorId }
+}
+
+function extractAttachments(msg: any): AttachmentInfo[] {
+	const list: AttachmentInfo[] = []
+	const raw: any[] = []
+	if (Array.isArray(msg?.attachments)) raw.push(...msg.attachments)
+	if (msg?.attachment) raw.push(msg.attachment)
+	const flags = Number(msg?.flags ?? 0)
+	const isVoiceFlag = Number.isFinite(flags) && (flags & 8192) !== 0
+	for (const att of raw) {
+		if (!att || typeof att !== 'object') continue
+		const url = firstString(att.url, att.proxy_url)
+		if (!url) continue
+		const filename = firstString(att.filename, att.name, att.fileName) ?? 'attachment'
+		const contentType = firstString(att.content_type, att.contentType, att.mimetype) ?? ''
+		const audio =
+			contentType.toLowerCase().startsWith('audio/') ||
+			/\.(ogg|oga|opus|mp3|wav|m4a|webm)$/i.test(filename) ||
+			att.duration_secs != null ||
+			att.waveform != null ||
+			isVoiceFlag
+		list.push({ filename, url, contentType, voice: audio ? true : undefined })
+	}
+	return list
+}
+
+function pad(n: number) {
+	return n < 10 ? `0${n}` : String(n)
+}
+
+function formatDate(at: number): string {
+	try {
+		const d = new Date(at)
+		return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+	} catch {
+		return ''
+	}
+}
+
+function mediaLabel(attachments: AttachmentInfo[] | undefined, isVoice?: boolean): string {
+	if (isVoice) return '🎤 Voice'
+	if (!attachments || attachments.length === 0) return ''
+	const parts: string[] = []
+	for (const a of attachments) {
+		if (a.voice) parts.push(`🎤 ${a.filename}`)
+		else if ((a.contentType ?? '').toLowerCase().startsWith('image/')) parts.push(`🖼 ${a.filename}`)
+		else parts.push(`📎 ${a.filename}`)
+	}
+	return parts.join(' • ')
 }
 
 function handleAction(action: any) {
@@ -69,13 +134,21 @@ function handleAction(action: any) {
 		const id = messageIdOf(action) ?? (msg && typeof msg === 'object' ? firstString(msg.id) : undefined)
 		if (!id) return
 		const content = contentOf(msg)
-		if (!content) return
+		const attachments = extractAttachments(msg)
+		// Voice messages have empty content but a voice attachment — still track them
+		if (!content && attachments.length === 0) return
+		const author = extractAuthor(msg)
+		const isVoice = attachments.some(a => a.voice)
 		trackCreate({
 			id,
 			channelId: channelIdOf(action),
-			author: authorOf(msg),
-			authorId: firstString(msg?.author?.id),
+			author: author.author,
+			displayName: author.displayName,
+			authorId: author.authorId,
 			content,
+			attachments: attachments.length ? attachments : undefined,
+			hasLink: hasLinkIn(content),
+			isVoice: isVoice ? true : undefined,
 			at: Date.now(),
 		})
 		return
@@ -87,12 +160,19 @@ function handleAction(action: any) {
 		const id = messageIdOf(action)
 		if (!id) return
 		const newContent = contentOf(msg)
-		if (!newContent) return
-		const entry = trackEdit(id, newContent, channelIdOf(action))
+		const attachments = extractAttachments(msg)
+		// A delete/edit that only changes media (voice/image) still counts
+		if (!newContent && attachments.length === 0) return
+		const entry = trackEdit(id, newContent, channelIdOf(action), {
+			attachments: attachments.length ? attachments : undefined,
+			hasLink: hasLinkIn(newContent),
+			isVoice: attachments.some(a => a.voice) ? true : undefined,
+		})
 		if (entry && settings.notifyEdit) {
+			const media = mediaLabel(entry.attachments, entry.isVoice)
 			showToast(
 				'hozy-ghost-edit',
-				`✏️ Edited by ${entry.author}: ${entry.oldContent.slice(0, 60)}`,
+				`✏️ Edited by ${entry.author}: ${(entry.oldContent || media || '(media)').slice(0, 55)}`,
 				'default',
 			)
 		}
@@ -105,9 +185,10 @@ function handleAction(action: any) {
 		if (!id) return
 		const entry = trackDelete(id, channelIdOf(action))
 		if (entry && settings.notifyDelete) {
+			const media = mediaLabel(entry.attachments, entry.isVoice)
 			showToast(
 				'hozy-ghost-delete',
-				`🗑 Deleted by ${entry.author}: ${entry.oldContent.slice(0, 60)}`,
+				`🗑 Deleted by ${entry.author} ${media ? `(${media}) ` : ''}: ${(entry.oldContent || '(media)').slice(0, 50)}`,
 				'default',
 			)
 		}
@@ -122,7 +203,7 @@ function handleAction(action: any) {
 			if (entry && settings.notifyDelete) {
 				showToast(
 					'hozy-ghost-delete',
-					`🗑 Deleted by ${entry.author}: ${entry.oldContent.slice(0, 60)}`,
+					`🗑 Deleted by ${entry.author}: ${(entry.oldContent || '(media)').slice(0, 50)}`,
 					'default',
 				)
 			}
