@@ -1,0 +1,20 @@
+{
+	"format": 1,
+	"id": "com.hozy.image-ocr",
+	"name": "Hozy's Image OCR",
+	"description": "Hozy's Image OCR extracts text from any image in Discord with one long-press action and shows the result only to you.",
+	"author": "Hozy",
+	"icon": "TextIcon",
+	"version": "1.0.0",
+	"dependencies": {
+		"valenced.api": {
+			"version": ">=1 <2"
+		},
+		"discord": {
+			"version": "*"
+		}
+	},
+	"dist": {
+		"script": "index.js"
+	}
+}
