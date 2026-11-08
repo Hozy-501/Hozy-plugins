@@ -230,6 +230,30 @@
         }
       }
     },
+    "com.hozy.image-ocr": {
+      "name": "Hozy's Image OCR",
+      "description": "Hozy's Image OCR extracts text from any image in Discord with one long-press action and shows the result only to you.",
+      "author": "Hozy",
+      "icon": "TextIcon",
+      "channels": {
+        "latest": "1.0.0"
+      },
+      "versions": {
+        "1.0.0": {
+          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.image-ocr@1.0.0.zip",
+          "sha256": "0748f739bbcddd13d3da3d5037c85b55bebeb663f0f1cca3297784332607d071",
+          "size": 6557,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
     "com.hozy.translator": {
       "name": "Hozy's Translator",
       "description": "Hozy's Translator adds a translate action to Discord message menus and shows the result only to you.",
