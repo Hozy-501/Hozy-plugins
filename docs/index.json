@@ -267,6 +267,30 @@
         }
       }
     },
+    "com.hozy.voice-transcriber": {
+      "name": "Hozy's Voice Transcriber",
+      "description": "Hozy's Voice Transcriber converts Discord voice messages to text with one long-press action and shows the result only to you.",
+      "author": "Hozy",
+      "icon": "VoiceIcon",
+      "channels": {
+        "latest": "1.0.0"
+      },
+      "versions": {
+        "1.0.0": {
+          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.voice-transcriber@1.0.0.zip",
+          "sha256": "4da7dc6ec1c5075f042a3289ef75559f69830da3bf60ca6cbf806ba61358a958",
+          "size": 9328,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
     "dev.hozy.token-command": {
       "name": "Hozy Token Command",
       "description": "Type /token in chat to show your Discord token locally. Only you can see it.",
