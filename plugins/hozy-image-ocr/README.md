@@ -10,7 +10,8 @@ A Valenced plugin for Discord (Android) that extracts text from any image attach
 
 - **Long-press to extract** — hold any image message, then hit *Extract Text* in the action sheet
 - **40+ OCR languages** — searchable picker (Arabic, English, French, German, Spanish, Japanese, Chinese, and more); **All** covers mixed Arabic + English
-- **Works out of the box** — uses OCR.space free demo key; paste your own key in Settings for higher limits
+- **Two providers** — **OCR.space** (free, works without a key) or **Google Gemini vision** (needs a free key from AI Studio, better with handwriting + noisy photos)
+- **Works out of the box** — OCR.space uses the free demo key; paste your own key in Settings for higher limits
 - **Local-only output** — the text appears as a local message visible only to you, plus a Copy popup
 - **Cache (100 max)** — re-pressing *Extract Text* on the same image loads instantly from device storage
 - **Works with Hozy's Translator** — translate the extracted text to Arabic in one more tap
@@ -45,9 +46,16 @@ Go to **Settings → Valenced → Plugins → Hozy's Image OCR → Settings**
 
 | Option | Description |
 |---|---|
+| OCR Provider | **OCR.space** (free, no key needed) or **Gemini vision** (better handwriting) |
 | OCR Language | **All** (Arabic + English, recommended) or any of 40+ languages via searchable picker |
-| API Key (optional) | Leave empty for the free demo key. Paste your own key from `ocr.space` for higher limits |
+| API Key | Leave empty for OCR.space demo key. For Gemini: free key from `aistudio.google.com` |
+| Gemini Model | Leave empty for the default (`gemini-2.0-flash`). Override in Settings |
 | Show transcript popup | Toggle the **Extracted Text + Copy** popup on/off |
+
+### Gemini (optional)
+- Endpoint: `https://generativelanguage.googleapis.com/v1beta/models/<model>:generateContent`
+- Yes, Gemini supports image OCR — it reads Arabic dialect, handwriting, and noisy backgrounds better than OCR.space.
+- Free tier: Google AI Studio (no credit card) → **Get API key** → paste it → set **Provider = Gemini**.
 
 ### Notes on OCR.space
 - Free demo key (`helloworld`): ~25k requests/day, up to ~1 MB per image, Engine 2.

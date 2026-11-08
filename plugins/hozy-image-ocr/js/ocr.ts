@@ -1,8 +1,11 @@
+export type OcrProvider = 'ocrspace' | 'gemini'
 export type OcrLanguage = string
 
 export interface OcrSettings {
+	provider: OcrProvider
 	apiKey: string
 	language: OcrLanguage
+	model: string
 }
 
 export interface OcrResult {
@@ -126,20 +129,47 @@ function ensureBlob(data: ArrayBuffer | Blob, type: string): any {
 	return data
 }
 
+function bytesToBase64(buffer: ArrayBuffer): string {
+	const bytes = new Uint8Array(buffer)
+	let binary = ''
+	const chunk = 0x8000
+	for (let i = 0; i < bytes.length; i += chunk) {
+		binary += String.fromCharCode(...bytes.subarray(i, i + chunk))
+	}
+	// Hermes/RN has no atob/btoa guarantee — fallback to manual encoder
+	try {
+		// @ts-ignore
+		if (typeof btoa === 'function') return btoa(binary)
+	} catch {}
+	const base64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
+	let out = ''
+	for (let i = 0; i < binary.length; i += 3) {
+		const c1 = binary.charCodeAt(i)
+		const c2 = i + 1 < binary.length ? binary.charCodeAt(i + 1) : 0
+		const c3 = i + 2 < binary.length ? binary.charCodeAt(i + 2) : 0
+		out += base64[c1 >> 2]
+		out += base64[((c1 & 3) << 4) | (c2 >> 4)]
+		out += i + 1 < binary.length ? base64[((c2 & 15) << 2) | (c3 >> 6)] : '='
+		out += i + 2 < binary.length ? base64[c3 & 63] : '='
+	}
+	return out
+}
+
 // OCR.space free demo key — no user key needed for basic use.
 // Users can paste their own key in Settings for higher limits.
 const DEMO_KEY = 'helloworld'
 
-export async function runOcr(
+async function runOcrSpace(
 	image: ImageAttachment,
 	settings: OcrSettings,
+	data: ArrayBuffer,
 ): Promise<OcrResult> {
-	const data = await downloadWithFallback(image)
 	const apiKey = (settings.apiKey || '').trim() || DEMO_KEY
 	// 'all' = auto-detect (Engine 2 default). Any other value must be a
 	// 3-letter OCR.space code (ara, eng, fre, ...); 'eng+ara' and codes
 	// like fra/deu/hin return E201 "Value for parameter 'language' is invalid".
-	const language = settings.language === 'all' ? 'auto' : (settings.language || 'auto').trim() || 'auto'
+	const language =
+		settings.language === 'all' ? 'auto' : (settings.language || 'auto').trim() || 'auto'
 
 	const filename = normalizeFilename(image.filename)
 	const contentType = image.contentType || 'image/png'
@@ -206,4 +236,87 @@ export async function runOcr(
 	}
 
 	throw new Error('OCR returned empty text (no text found in image)')
+}
+
+async function runGeminiOcr(
+	image: ImageAttachment,
+	settings: OcrSettings,
+	data: ArrayBuffer,
+): Promise<OcrResult> {
+	const apiKey = (settings.apiKey || '').trim()
+	if (!apiKey) {
+		throw new Error(
+			'Gemini API key is missing. Get a free key from aistudio.google.com and paste it in Settings.',
+		)
+	}
+	const model = (settings.model || 'gemini-2.0-flash').trim() || 'gemini-2.0-flash'
+	const lang = settings.language === 'all' ? 'auto' : settings.language || 'auto'
+	const base64 = bytesToBase64(data)
+
+	const prompt =
+		lang === 'auto'
+			? 'Extract ALL text from this image exactly as written. Keep line breaks. Do not translate. If there is no text, reply exactly: NO_TEXT'
+			: `Extract ALL text from this image exactly as written. Keep line breaks. Do not translate. Language hint: ${lang}. If there is no text, reply exactly: NO_TEXT`
+
+	const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`
+	const body = {
+		contents: [
+			{
+				parts: [
+					{ text: prompt },
+					{
+						inline_data: {
+							mime_type: image.contentType || 'image/png',
+							data: base64,
+						},
+					},
+				],
+			},
+		],
+		generationConfig: { temperature: 0, maxOutputTokens: 4096 },
+	}
+
+	const response = await fetch(url, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(body),
+	} as any)
+
+	if (!response.ok) {
+		const bodyText = await response.text().catch(() => '')
+		if (response.status === 400 || response.status === 403) {
+			throw new Error(
+				`Gemini rejected the request (${response.status}). Check your API key and that the Generative Language API is enabled. ${bodyText.slice(0, 150)}`,
+			)
+		}
+		throw new Error(`Gemini API failed (${response.status}). ${bodyText.slice(0, 250)}`)
+	}
+
+	const json: any = await response.json().catch(() => null)
+	const candidate = json?.candidates?.[0]
+	const parts = candidate?.content?.parts ?? []
+	const texts: string[] = []
+	for (const part of parts) {
+		const t = firstString(part?.text)
+		if (t) texts.push(t)
+	}
+	const text = texts.join('\n').trim()
+	if (!text) throw new Error('Gemini returned empty text (no text found in image)')
+	if (text === 'NO_TEXT') throw new Error('OCR returned empty text (no text found in image)')
+	return { text, providerUsed: `Gemini (${model})` }
+}
+
+export async function runOcr(
+	image: ImageAttachment,
+	settings: OcrSettings,
+): Promise<OcrResult> {
+	const data = await downloadWithFallback(image)
+	if (settings.provider === 'gemini') {
+		return runGeminiOcr(image, settings, data)
+	}
+	return runOcrSpace(image, settings, data)
+}
+
+export function getProviderLabel(provider: OcrProvider): string {
+	return provider === 'gemini' ? 'Google Gemini (vision)' : 'OCR.space (free)'
 }

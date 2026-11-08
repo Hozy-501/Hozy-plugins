@@ -12,17 +12,22 @@ import {
 import { clearCache } from './cache'
 import { getLanguageName, OCR_LANGUAGES } from './languages'
 import { LanguagePickerModal } from './picker'
-import type { OcrLanguage } from './ocr'
+import type { OcrLanguage, OcrProvider } from './ocr'
+import { getProviderLabel } from './ocr'
 
 export interface ImageOcrSettings {
+	provider: OcrProvider
 	apiKey: string
 	language: OcrLanguage
+	model: string
 	showPopup: boolean
 }
 
 export const DEFAULT_SETTINGS: ImageOcrSettings = {
+	provider: 'ocrspace',
 	apiKey: '',
 	language: 'all',
+	model: '',
 	showPopup: true,
 }
 
@@ -80,9 +85,12 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 	const [showKey, setShowKey] = useState(false)
 	const [showLangPicker, setShowLangPicker] = useState(false)
 
+	const provider = s.provider ?? DEFAULT_SETTINGS.provider
 	const apiKey = s.apiKey ?? ''
 	const language = s.language ?? 'all'
+	const model = s.model ?? ''
 	const showPopup = s.showPopup ?? true
+	const isGemini = provider === 'gemini'
 
 	return (
 		<Page>
@@ -92,24 +100,44 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 				keyboardShouldPersistTaps="handled"
 				showsVerticalScrollIndicator={true}
 			>
-				<Design.TableRowGroup
-					title="OCR Language"
-					description="Tap to search 40+ languages. 'All' covers Arabic + English."
-				>
+				<Design.TableRowGroup title="OCR Provider">
+					<Design.TableRadioGroup
+						value={provider}
+						onChange={(val: OcrProvider) => storage.set({ provider: val })}
+					>
+						<Design.TableRadioRow
+							label="OCR.space (free)"
+							subLabel="Works without a key (demo limit)"
+							value="ocrspace"
+							onPress={() => storage.set({ provider: 'ocrspace' as OcrProvider })}
+						/>
+						<Design.TableRadioRow
+							label="Google Gemini (vision)"
+							subLabel="Needs Google AI Studio key — better with handwriting"
+							value="gemini"
+							onPress={() => storage.set({ provider: 'gemini' as OcrProvider })}
+						/>
+					</Design.TableRadioGroup>
 					<Design.TableRow
-						label="Document language"
-						subLabel={getLanguageName(language)}
-						arrow
-						onPress={() => setShowLangPicker(true)}
+						label="Selected"
+						subLabel={getProviderLabel(provider)}
 					/>
 				</Design.TableRowGroup>
 
 				<Design.TableRowGroup
-					title="API Key (optional)"
-					description="Works out of the box with the free demo key. Paste your own ocr.space key for higher limits."
+					title={isGemini ? 'Gemini API Key' : 'OCRSpace API Key (optional)'}
+					description={
+						isGemini
+							? 'Get a free key at aistudio.google.com → Get API key. Stored locally only.'
+							: 'Works out of the box with the free demo key. Paste your own ocr.space key for higher limits.'
+					}
 				>
 					<TextField
-						placeholder="Paste your ocr.space key (optional)"
+						placeholder={
+							isGemini
+								? 'Paste Gemini API key (AIza...)'
+								: 'Paste your ocr.space key (optional)'
+						}
 						value={apiKey}
 						onChange={v => storage.set({ apiKey: v })}
 						secure={!showKey}
@@ -122,6 +150,35 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 							{showKey ? 'Hide key' : 'Show key'}
 						</Design.Text>
 					</TouchableOpacity>
+				</Design.TableRowGroup>
+
+				{isGemini && (
+					<Design.TableRowGroup
+						title="Gemini Model"
+						description="Leave empty for the default (gemini-2.0-flash)."
+					>
+						<TextField
+							placeholder="Model (optional, e.g. gemini-2.0-flash)"
+							value={model}
+							onChange={v => storage.set({ model: v })}
+						/>
+					</Design.TableRowGroup>
+				)}
+
+				<Design.TableRowGroup
+					title="OCR Language"
+					description={
+						isGemini
+							? 'Language hint for the prompt. Auto is recommended.'
+							: "Tap to search 40+ languages. 'All' covers Arabic + English."
+					}
+				>
+					<Design.TableRow
+						label="Document language"
+						subLabel={getLanguageName(language)}
+						arrow
+						onPress={() => setShowLangPicker(true)}
+					/>
 				</Design.TableRowGroup>
 
 				<Design.TableRowGroup title="Display">
