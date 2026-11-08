@@ -1,0 +1,20 @@
+{
+	"format": 1,
+	"id": "com.hozy.chatbot",
+	"name": "Hozy's Chatbot",
+	"description": "Hozy's Chatbot answers you in Discord with one /ask command — local-only, markdown, reads links and images.",
+	"author": "Hozy",
+	"icon": "ChatIcon",
+	"version": "1.0.0",
+	"dependencies": {
+		"valenced.api": {
+			"version": ">=1 <2"
+		},
+		"discord": {
+			"version": "*"
+		}
+	},
+	"dist": {
+		"script": "index.js"
+	}
+}
