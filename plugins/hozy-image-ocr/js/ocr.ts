@@ -136,10 +136,10 @@ export async function runOcr(
 ): Promise<OcrResult> {
 	const data = await downloadWithFallback(image)
 	const apiKey = (settings.apiKey || '').trim() || DEMO_KEY
-	const language =
-		settings.language === 'all'
-			? 'eng+ara'
-			: (settings.language || 'eng+ara').trim() || 'eng+ara'
+	// 'all' = auto-detect (Engine 2 default). Any other value must be a
+	// 3-letter OCR.space code (ara, eng, fre, ...); 'eng+ara' and codes
+	// like fra/deu/hin return E201 "Value for parameter 'language' is invalid".
+	const language = settings.language === 'all' ? 'auto' : (settings.language || 'auto').trim() || 'auto'
 
 	const filename = normalizeFilename(image.filename)
 	const contentType = image.contentType || 'image/png'
@@ -188,28 +188,22 @@ export async function runOcr(
 		throw new Error(apiMsg)
 	}
 
-	const parsed = json?.ParsedText ?? json?.parsed_text ?? ''
-	if (Array.isArray(parsed)) {
-		const text = parsed.join('\n').trim()
-		if (!text) throw new Error('OCR returned empty text (no text found in image)')
-		return { text, providerUsed: 'OCR.space' }
-	}
-
-	const first = Array.isArray(json?.ParsedText) ? json.ParsedText[0] : json?.ParsedText
-	const text = firstString(first) ?? firstString(json?.Text, json?.text)
-	if (text && text.trim()) {
-		return { text: text.trim(), providerUsed: 'OCR.space' }
-	}
-
-	// Some responses expose ParsedText array with object
+	// OCR.space returns ParsedResults: [{ ParsedText: "..." }, ...]
+	const results = Array.isArray(json?.ParsedResults) ? json.ParsedResults : []
 	const texts: string[] = []
-	if (Array.isArray(json?.ParsedText)) {
-		for (const part of json.ParsedText) {
-			const t = firstString(part?.ParsedText, part?.text)
-			if (t) texts.push(t)
-		}
+	for (const part of results) {
+		const t = firstString(part?.ParsedText, part?.text)
+		if (t) texts.push(t)
 	}
-	if (texts.length) return { text: texts.join('\n'), providerUsed: 'OCR.space' }
+	if (texts.length) {
+		return { text: texts.join('\n').trim(), providerUsed: 'OCR.space' }
+	}
+
+	// Fallback: some proxies flatten to top-level ParsedText
+	const flattened = firstString(json?.ParsedText, json?.parsed_text, json?.Text)
+	if (flattened && flattened.trim()) {
+		return { text: flattened.trim(), providerUsed: 'OCR.space' }
+	}
 
 	throw new Error('OCR returned empty text (no text found in image)')
 }
