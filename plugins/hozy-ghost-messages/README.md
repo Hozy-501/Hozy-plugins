@@ -13,7 +13,8 @@ A Valenced plugin for Discord (Android) that saves **edited** and **deleted** me
 - **Search + multi-filters** — search by username/nickname/text, filter by Edits / Deletes / Media / Voice / Links / Favorites (multiple at once)
 - **Media + voice + links** — entries remember attachments, 🎤 voice flags, and 🔗 links (links may expire like CDN)
 - **Favorites (⭐)** — star any ghost, then filter only ⭐ across everyone
-- **Survives restarts** — stored via Valenced JSON storage, not in-memory
+- **Backup: Export (JSON/TXT/MD) + Import** — copy your archive to the clipboard and restore it later (or move chats between devices); duplicates are skipped
+- **Survives restarts & updates** — old logs stay intact across versions, no data loss on update
 - **Recent cache (500 messages)** — remembers each message's last content so deletes/edits can be logged
 - **Optional toasts** — quick `🗑 Deleted by …` / `✏️ Edited by …` alerts
 - **Light & local** — no server, no uploads; clean teardown on disable
@@ -53,6 +54,8 @@ Go to **Settings → Valenced → Plugins → Hozy's Ghost Messages → Settings
 | Search | By username, nickname, or text |
 | Filters (multi-select) | Edits / Deletes / Media / Voice / Links / Favorites |
 | ⭐ Favorite | Star any ghost; filter ⭐ to see only favorites |
+| Export | JSON (full backup incl. cache), TXT (plain), MD (Markdown) — copies to clipboard |
+| Import | Paste a JSON backup to restore. Needs `Export as JSON`. |
 | Clear ghost log | Removes the saved events (keeps tracking) |
 | Clear everything | Removes log + message cache |
 

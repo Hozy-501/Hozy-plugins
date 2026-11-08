@@ -1,6 +1,9 @@
 import { Page } from '@valenced/components'
+import { ToastActionCreators } from '@valenced/discord/actions'
 import { Design } from '@valenced/discord/design'
 import { getJsonStorage, pluginStoragePathFor } from '@valenced/json-storage'
+import { lookupModule } from '@valenced/modules/finders'
+import { withProps } from '@valenced/modules/finders/filters'
 import { useMemo, useState } from 'react'
 import {
 	ScrollView,
@@ -12,9 +15,12 @@ import {
 import {
 	clearAllGhostData,
 	clearGhostLog,
+	exportGhosts,
+	type ExportFormat,
 	type GhostEntry,
 	getGhostStorage,
 	ghostKey,
+	importGhosts,
 	toggleFavorite,
 } from './ghost'
 
@@ -45,6 +51,51 @@ export function getSettings(): GhostSettings {
 		...DEFAULT_SETTINGS,
 		...(getStorage().cache as Partial<GhostSettings> | undefined),
 	}
+}
+
+function showToast(key: string, text: string, variant: 'default' | 'success' | 'critical' = 'default') {
+	try {
+		ToastActionCreators.open(key, { text, variant })
+	} catch {
+		try {
+			ToastActionCreators.open({ key, content: text })
+		} catch {
+			console.error("[Hozy's Ghost]", text)
+		}
+	}
+}
+
+function copyToClipboard(text: string) {
+	try {
+		const [clip] = lookupModule(withProps('setString', 'getString'))
+		const api: any = clip as any
+		const setFn =
+			typeof api?.setString === 'function'
+				? api.setString
+				: api?.default && typeof api.default.setString === 'function'
+					? api.default.setString
+					: null
+		if (setFn) {
+			setFn.call(api?.default ?? api, text)
+			return true
+		}
+	} catch {}
+	return false
+}
+
+function doExport(format: ExportFormat) {
+	const text = exportGhosts(format)
+	const label = format.toUpperCase()
+	if (!text || text.trim().length < 20) {
+		showToast('hozy-ghost-export', 'Nothing to export yet.', 'critical')
+		return
+	}
+	const ok = copyToClipboard(text)
+	showToast(
+		'hozy-ghost-export',
+		ok ? `Exported as ${label} (${text.length} chars) — copied!` : `Exported as ${label} (${text.length} chars)`,
+		ok ? 'success' : 'default',
+	)
 }
 
 function pad(n: number) {
@@ -106,6 +157,8 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 	const [search, setSearch] = useState('')
 	const [filters, setFilters] = useState<Set<FilterId>>(new Set())
 	const [expanded, setExpanded] = useState<string | null>(null)
+	const [importOpen, setImportOpen] = useState(false)
+	const [importText, setImportText] = useState('')
 
 	const notifyDelete = s.notifyDelete ?? true
 	const notifyEdit = s.notifyEdit ?? true
@@ -118,6 +171,17 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 			else next.add(id)
 			return next
 		})
+	}
+
+	const doImport = () => {
+		const result = importGhosts(importText)
+		if (result.ok) {
+			showToast('hozy-ghost-import', `Imported ${result.count} entries ✓`, 'success')
+			setImportText('')
+			setImportOpen(false)
+		} else {
+			showToast('hozy-ghost-import', result.error ?? 'Import failed.', 'critical')
+		}
 	}
 
 	const groups = useMemo<AuthorGroup[]>(() => {
@@ -288,6 +352,56 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 					)}
 				</Design.TableRowGroup>
 
+				<Design.TableRowGroup
+					title="Backup"
+					description="Export copies your archive to the clipboard. Import restores a JSON backup (duplicates are skipped)."
+				>
+					<View style={styles.chips}>
+						<TouchableOpacity style={styles.chip} onPress={() => doExport('json')}>
+							<Design.Text variant="text-sm/medium" style={styles.chipTxt}>
+								Export JSON
+							</Design.Text>
+						</TouchableOpacity>
+						<TouchableOpacity style={styles.chip} onPress={() => doExport('txt')}>
+							<Design.Text variant="text-sm/medium" style={styles.chipTxt}>
+								Export TXT
+							</Design.Text>
+						</TouchableOpacity>
+						<TouchableOpacity style={styles.chip} onPress={() => doExport('md')}>
+							<Design.Text variant="text-sm/medium" style={styles.chipTxt}>
+								Export MD
+							</Design.Text>
+						</TouchableOpacity>
+					</View>
+					<Design.TableRow
+						label="Import backup (JSON)"
+						subLabel={importOpen ? 'Tap again to close' : 'Paste a JSON backup to restore'}
+						arrow
+						onPress={() => setImportOpen(v => !v)}
+					/>
+					{importOpen ? (
+						<View>
+							<View style={styles.searchWrap}>
+								<TextInput
+									value={importText}
+									onChangeText={setImportText}
+									placeholder="Paste JSON backup here…"
+									placeholderTextColor="#949ba4"
+									autoCapitalize="none"
+									autoCorrect={false}
+									multiline
+									style={[styles.search, styles.importBox]}
+								/>
+							</View>
+							<TouchableOpacity style={styles.importBtn} onPress={doImport}>
+								<Design.Text variant="text-sm/medium" style={styles.chipTxtActive}>
+									Import now
+								</Design.Text>
+							</TouchableOpacity>
+						</View>
+					) : null}
+				</Design.TableRowGroup>
+
 				<Design.TableRowGroup title="Data">
 					<Design.TableRow
 						label="Clear ghost log"
@@ -327,6 +441,16 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		borderWidth: 1,
 		borderColor: '#2b2d31',
+	},
+	importBox: { minHeight: 120, textAlignVertical: 'top' },
+	importBtn: {
+		backgroundColor: '#5865f2',
+		borderRadius: 8,
+		paddingHorizontal: 12,
+		paddingVertical: 10,
+		marginHorizontal: 16,
+		marginBottom: 8,
+		alignItems: 'center',
 	},
 	chips: {
 		flexDirection: 'row',

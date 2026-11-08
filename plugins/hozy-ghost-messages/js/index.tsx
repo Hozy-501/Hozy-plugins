@@ -1,5 +1,5 @@
 import { ToastActionCreators } from '@valenced/discord/actions'
-import { lookupModule } from '@valenced/modules/finders'
+import { lookupModule, waitForModules } from '@valenced/modules/finders'
 import { withProps } from '@valenced/modules/finders/filters'
 import { instead } from '@valenced/patcher'
 import {
@@ -239,6 +239,12 @@ export default plugin({
 		try {
 			const [found] = lookupModule(withProps('dispatch', 'isDispatching'))
 			if (found) patchDispatcher(found, cleanup)
+			// Race fix: dispatcher may load after plugin start — subscribe for late arrivals
+			cleanup(
+				waitForModules(withProps('dispatch', 'isDispatching'), (exports: unknown) => {
+					patchDispatcher(exports, cleanup)
+				}),
+			)
 		} catch (error) {
 			console.error("[Hozy's Ghost] initial lookup failed:", error)
 		}
