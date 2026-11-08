@@ -236,13 +236,26 @@
       "author": "Hozy",
       "icon": "HistoryIcon",
       "channels": {
-        "latest": "1.0.0"
+        "latest": "1.1.0"
       },
       "versions": {
         "1.0.0": {
           "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.ghost-messages@1.0.0.zip",
           "sha256": "b34ac1fe60ad62212f8f3ea38d175426fb1f5847be7056fc1e4f575e10eb8c95",
           "size": 2903,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "1.1.0": {
+          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.ghost-messages@1.1.0.zip",
+          "sha256": "8dd889d92f0abc9bd5ced58766734caee78135827edc3f4b49772212d22be100",
+          "size": 5152,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
