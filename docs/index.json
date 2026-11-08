@@ -236,7 +236,7 @@
       "author": "Hozy",
       "icon": "TextIcon",
       "channels": {
-        "latest": "1.0.1"
+        "latest": "1.0.2"
       },
       "versions": {
         "1.0.0": {
@@ -256,6 +256,19 @@
           "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.image-ocr@1.0.1.zip",
           "sha256": "161e8a35e107cfc3b64cc5eab1864acc27757a1ba8cab9c8b59b65c7f30dc835",
           "size": 7740,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "1.0.2": {
+          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.image-ocr@1.0.2.zip",
+          "sha256": "6429d893d1b06fcca4e631fbd821248afc092e1b1bba15c0490a7138d3b2cb1e",
+          "size": 7570,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
