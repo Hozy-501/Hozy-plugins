@@ -236,7 +236,7 @@
       "author": "Hozy",
       "icon": "ChatIcon",
       "channels": {
-        "latest": "1.2.2"
+        "latest": "1.2.3"
       },
       "versions": {
         "1.0.0": {
@@ -295,6 +295,19 @@
           "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.chatbot@1.2.2.zip",
           "sha256": "b7bce3d3d1d96da043fe122fe4e79dff9acb12509fd1741fbd45794a878c89c1",
           "size": 10247,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "1.2.3": {
+          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.chatbot@1.2.3.zip",
+          "sha256": "126e97f993b9f2c1c3c42ba79fd47ad39b774ed1722cd2aa3ee103c28690e376",
+          "size": 10100,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
