@@ -236,7 +236,7 @@
       "author": "Hozy",
       "icon": "ChatIcon",
       "channels": {
-        "latest": "1.2.1"
+        "latest": "1.2.2"
       },
       "versions": {
         "1.0.0": {
@@ -282,6 +282,19 @@
           "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.chatbot@1.2.1.zip",
           "sha256": "b6bdba1412bfd3bbbef39870192f7373ac9e3d2c036b99ee7738d6b1056bb3b3",
           "size": 10173,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "1.2.2": {
+          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.chatbot@1.2.2.zip",
+          "sha256": "b7bce3d3d1d96da043fe122fe4e79dff9acb12509fd1741fbd45794a878c89c1",
+          "size": 10247,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
@@ -512,7 +525,7 @@
       "author": "Hozy <501>",
       "icon": "KeyIcon",
       "channels": {
-        "latest": "2.0.2"
+        "latest": "2.0.3"
       },
       "versions": {
         "1.0.0": {
@@ -597,6 +610,19 @@
           "url": "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@2.0.2.zip",
           "sha256": "d08d3a5bfc97fc0a0c51191a97299fb53d0e1fdaf4e87d78b549586f86367bba",
           "size": 2374,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "2.0.3": {
+          "url": "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@2.0.3.zip",
+          "sha256": "62ff7467373479f3f7d89bf82357c7e98dfb1256424e920193bcde4b6e81603d",
+          "size": 2475,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
