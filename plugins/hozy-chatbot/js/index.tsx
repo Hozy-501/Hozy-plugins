@@ -9,7 +9,7 @@ import { getSettings, getStorage, SettingsComponent } from './settings'
 type AnyRecord = Record<string, any>
 type Cleanup = (...fns: Array<() => any>) => void
 
-const NAME = 'ask'
+const NAME = 'hozy'
 const APP_ID = '-1'
 const CHAT = 1
 const BUILT_IN = 0
@@ -77,8 +77,8 @@ function parseAsk(content: string): string | null {
 	if (typeof content !== 'string') return null
 	const text = content.trim()
 	if (!text) return null
-	// /ask <question> | !ask <question> | .ask <question>
-	const m = text.match(/^(?:\/|!|\.)ask\s+(.+)$/is)
+	// /ask <question> | /hozy <question> | !ask <question> | .ask <question>
+	const m = text.match(/^(?:\/|!|\.)(?:ask|hozy)\s+(.+)$/is)
 	if (m && m[1]) return m[1].trim()
 	return null
 }
@@ -174,22 +174,58 @@ function commandFrom(list: any[]) {
 		__bunny: undefined,
 		execute: (args: any) => {
 			void (async () => {
-				// Only trust real channel fields — applicationId is an app ID, not a channel.
-				const channelId = String(args?.channelId ?? args?.channel_id ?? '')
-				const prompt =
-					(typeof args?.prompt === 'string' && args.prompt) ||
-					args?.options?.[0]?.value ||
-					args?.prompt ||
-					''
-				const q = String(prompt).trim()
-				if (!q) {
-					showToast('Type /ask <question> in chat.', 'critical')
-					return
+				try {
+					// Only trust real channel fields — applicationId is an app ID, not a channel.
+					const channelId = String(
+						(args as any)?.channelId ?? (args as any)?.channel_id ?? (args as any)?.channel?.id ?? '',
+					)
+					const prompt =
+						(typeof (args as any)?.prompt === 'string' && (args as any).prompt) ||
+						(Array.isArray((args as any)?.options) && (args as any).options[0]?.value) ||
+						typeof (args as any)?.options === 'object' && typeof (args as any)?.options?.prompt === 'string' ? (args as any).options.prompt :
+						(typeof (args as any)?.options === 'string' ? (args as any).options : '') ||
+						''
+					const q = String(prompt).trim()
+					if (!q) {
+						showToast('Type /hozy <question> in chat.', 'critical')
+						return
+					}
+					await answer(q, channelId)
+				} catch (error) {
+					console.error("[Hozy's Chatbot] execute failed:", error)
+					showToast('Chatbot failed — see logs.', 'critical')
 				}
-				await answer(q, channelId)
 			})()
 		},
 	}
+}
+
+function withAskCommand(result: unknown) {
+	if (!Array.isArray(result)) return result
+	if (result.some(cmd => cmd?.name === NAME)) return result
+	return [commandFrom(result), ...result]
+}
+
+function patchCommands(mod: AnyRecord | undefined, cleanup: Cleanup) {
+	if (!mod || typeof mod.getBuiltInCommands !== 'function') return
+	if (seenModules.has(mod)) return
+	seenModules.add(mod)
+
+	cleanup(
+		after(
+			mod,
+			'getBuiltInCommands',
+			(res: unknown) => {
+				try {
+					return withAskCommand(res)
+				} catch (error) {
+					console.error("[Hozy's Chatbot] command inject failed:", error)
+					return res
+				}
+			},
+			LAST,
+		),
+	)
 }
 
 function patchSend(mod: AnyRecord | undefined, cleanup: Cleanup) {
@@ -203,19 +239,41 @@ function patchSend(mod: AnyRecord | undefined, cleanup: Cleanup) {
 			'sendMessage',
 			function (this: any, args: any[], original: (...a: any[]) => any) {
 				try {
-					const message = args.length > 1 ? args[1] : args[0]
-					const content = contentOf(message)
-					if (typeof content !== 'string') return original.apply(this, args)
-					const ask = parseAsk(content)
-					if (ask != null) {
-						// Use only the real channel from the message payload.
-						// Previously fell back to a global lastChannelId tracked from
-						// ANY dispatcher action — could deliver the private answer to
-						// a previously visited channel (privacy leak). Now we never guess.
-						const channelId =
+					// Discord sendMessage has several signatures:
+					// (channelId, message) | (message) | (contentString) | (contentString, channelId)
+					const raw0 = args[0]
+					const raw1 = args[1]
+					let content = ''
+					let channelId = ''
+					if (typeof raw0 === 'string' && raw1 && typeof raw1 === 'object') {
+						channelId = raw0
+						content = contentOf(raw1)
+					} else if (typeof raw0 === 'string' && typeof raw1 === 'string') {
+						// (content, channelId) or (channelId, content) — pick the /ask one
+						if (parseAsk(raw0)) {
+							content = raw0
+							channelId = raw1
+						} else if (parseAsk(raw1)) {
+							content = raw1
+							channelId = raw0
+						} else {
+							content = raw0
+							channelId = raw1
+						}
+					} else if (typeof raw0 === 'string') {
+						content = raw0
+						channelId = typeof raw1 === 'string' ? raw1 : ''
+					} else {
+						const message = args.length > 1 ? args[1] : args[0]
+						content = contentOf(message)
+						channelId =
 							typeof message === 'object' && message !== null
 								? (message as AnyRecord).channel_id ?? (message as AnyRecord).channelId ?? ''
 								: ''
+					}
+					if (typeof content !== 'string') return original.apply(this, args)
+					const ask = parseAsk(content)
+					if (ask != null) {
 						const cid = String(channelId || '')
 						if (!isValidChannelId(cid)) {
 							// Still swallow the message (typed /ask must never go to the server)
@@ -255,9 +313,18 @@ function attach(cleanup: Cleanup) {
 		}
 	}, 5000)
 
-	// Slash-command injection is DISABLED intentionally: injecting a fake
-	// built-in command crashed Discord (/ask kick). Typed "/ask ..." is
-	// intercepted in sendMessage below — same result, zero crash risk.
+	// Slash command: /hozy (safe injection, named to avoid /ask collisions).
+	cleanup(
+		waitForModules(withProps('getBuiltInCommands'), (exports: unknown) => {
+			if (stopped) return
+			patchCommands(asModule(exports) ?? (exports as AnyRecord), cleanup)
+		}),
+	)
+	try {
+		const [found] = lookupModule(withProps('getBuiltInCommands'))
+		if (found && !stopped) patchCommands(asModule(found) ?? (found as AnyRecord), cleanup)
+	} catch {}
+
 	cleanup(
 		waitForModules(withProps('sendMessage', 'editMessage'), (exports: unknown) => {
 			if (stopped) return
