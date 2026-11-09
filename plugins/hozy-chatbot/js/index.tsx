@@ -192,34 +192,6 @@ function commandFrom(list: any[]) {
 	}
 }
 
-function withAskCommand(result: unknown) {
-	if (!Array.isArray(result)) return result
-	if (result.some(cmd => cmd?.name === NAME)) return result
-	return [...result, commandFrom(result)]
-}
-
-function patchCommands(mod: AnyRecord | undefined, cleanup: Cleanup) {
-	if (!mod || typeof mod.getBuiltInCommands !== 'function') return
-	if (seenModules.has(mod)) return
-	seenModules.add(mod)
-
-	cleanup(
-		after(
-			mod,
-			'getBuiltInCommands',
-			(res: unknown) => {
-				try {
-					return withAskCommand(res)
-				} catch (error) {
-					console.error("[Hozy's Chatbot] command inject failed:", error)
-					return res
-				}
-			},
-			LAST,
-		),
-	)
-}
-
 function patchSend(mod: AnyRecord | undefined, cleanup: Cleanup) {
 	if (!mod || typeof mod.sendMessage !== 'function') return
 	if ((mod as any).__hozyAskSend) return
@@ -283,17 +255,9 @@ function attach(cleanup: Cleanup) {
 		}
 	}, 5000)
 
-	cleanup(
-		waitForModules(withProps('getBuiltInCommands'), (exports: unknown) => {
-			if (stopped) return
-			patchCommands(asModule(exports) ?? (exports as AnyRecord), cleanup)
-		}),
-	)
-	try {
-		const [found] = lookupModule(withProps('getBuiltInCommands'))
-		if (found && !stopped) patchCommands(asModule(found) ?? (found as AnyRecord), cleanup)
-	} catch {}
-
+	// Slash-command injection is DISABLED intentionally: injecting a fake
+	// built-in command crashed Discord (/ask kick). Typed "/ask ..." is
+	// intercepted in sendMessage below — same result, zero crash risk.
 	cleanup(
 		waitForModules(withProps('sendMessage', 'editMessage'), (exports: unknown) => {
 			if (stopped) return

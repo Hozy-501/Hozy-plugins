@@ -3,10 +3,12 @@ import { ToastActionCreators } from '@valenced/discord/actions'
 import { Design } from '@valenced/discord/design'
 import { getJsonStorage, pluginStoragePathFor } from '@valenced/json-storage'
 import { lookupModule } from '@valenced/modules/finders'
-import { withProps } from '@valenced/modules/finders/filters'
+import { withName, withProps } from '@valenced/modules/finders/filters'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+	KeyboardAvoidingView,
 	Modal,
+	Platform,
 	ScrollView,
 	StyleSheet,
 	TextInput,
@@ -208,7 +210,15 @@ function TextField({
 // ---------- Chat panel (sessions on the right) ----------
 
 function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
-	const sessions = getSessionsStorage().use() ?? []
+	const [sessions, setSessions] = useState<ChatSession[]>(() => getSessions())
+	const refreshSessions = () => {
+		try {
+			setSessions(getSessions())
+		} catch {}
+	}
+	useEffect(() => {
+		if (open) refreshSessions()
+	}, [open, sessions.length])
 	const [activeId, setActiveId] = useState<string | null>(null)
 	const [draft, setDraft] = useState('')
 	const [sending, setSending] = useState(false)
@@ -234,10 +244,16 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 		const propsToTry = [
 			'launchImageLibrary',
 			'launchImageLibraryAsync',
+			'launchCamera',
+			'launchCameraAsync',
 			'pickImage',
 			'showImagePicker',
+			'openPicker',
+			'chooseImage',
 			'openFile',
 			'pickDocument',
+			'getDocumentAsync',
+			'openGallery',
 		]
 		for (const prop of propsToTry) {
 			try {
@@ -278,15 +294,47 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 				return true
 			} catch {}
 		}
+		// Fallback: search by module name (e.g. ImagePicker / DocumentPicker)
+		const namesToTry = ['ImagePicker', 'DocumentPicker', 'FilePicker', 'ImageCropPicker']
+		for (const name of namesToTry) {
+			try {
+				const [found] = lookupModule(withName(name))
+				const mod: any = found as any
+				const fn =
+					mod?.launchImageLibrary ??
+					mod?.launchImageLibraryAsync ??
+					mod?.pickDocument ??
+					mod?.getDocumentAsync ??
+					mod?.default?.launchImageLibrary ??
+					mod?.default?.pickDocument
+				if (typeof fn !== 'function') continue
+				const res = await fn.call(mod?.default ?? mod, {
+					mediaType: 'photo',
+					quality: 0.8,
+					selectionLimit: 1,
+				})
+				const asset =
+					res?.assets?.[0] ?? res?.asset ?? (typeof res?.uri === 'string' ? res : null)
+				if (!asset?.uri) continue
+				const uri: string = asset.uri
+				const filename: string = asset.fileName ?? asset.name ?? 'image.jpg'
+				const mime: string = asset.mimeType ?? asset.type ?? 'image/jpeg'
+				const downloaded = await fetch(uri).then(r => r.arrayBuffer())
+				setPending({ filename, mime, base64: bytesToBase64(downloaded) })
+				showToast('File attached ✓', 'success')
+				return true
+			} catch {}
+		}
 		return false
 	}
 
 	const onUploadPressed = async () => {
 		const picked = await tryNativePicker()
 		if (!picked) {
-			// No native picker in this build — ask for a URL they can paste
+			// No native picker in this build — paste an HTTPS file URL.
+			// We never silently do nothing (the old bug showed no feedback).
 			setUrlMode(true)
-			showToast('Paste an HTTPS file URL below', 'default')
+			showToast('No file picker here — paste an HTTPS file URL below', 'default')
 		}
 	}
 
@@ -381,6 +429,7 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 		}
 		upsertSession(session)
 		if (!cancelledRef.current) setActiveId(session.id)
+		refreshSessions()
 
 		try {
 			const settings = getSettings()
@@ -395,6 +444,7 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 				updatedAt: Date.now(),
 				messages: [...latest.messages, assistantMsg].slice(-MAX_MSGS),
 			})
+			refreshSessions()
 		} catch (error) {
 			if (cancelledRef.current) return
 			const msg = error instanceof Error ? error.message : 'Chatbot failed'
@@ -410,6 +460,7 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 						{ role: 'assistant' as const, content: `Error: ${formatError(msg)}`, at: Date.now() },
 					].slice(-MAX_MSGS),
 				})
+				refreshSessions()
 			} catch {}
 		} finally {
 			sendingRef.current = false
@@ -436,6 +487,7 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 
 	return (
 		<Modal visible={open} animationType="slide" transparent={false} onRequestClose={onClose}>
+			<KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0} style={{ flex: 1 }}>
 			<View style={styles.panel}>
 				<View style={styles.panelHeader}>
 					<TouchableOpacity onPress={onClose} style={styles.headerBtn}>
@@ -449,6 +501,7 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 							const s = newSession()
 							upsertSession(s)
 							setActiveId(s.id)
+							refreshSessions()
 						}}
 					>
 						<Design.Text variant="text-md/medium" style={styles.closeTxt}>
@@ -563,7 +616,7 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 											{new Date(s.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })} • {s.messages.length} msg
 										</Design.Text>
 									</TouchableOpacity>
-									<TouchableOpacity onPress={() => deleteSession(s.id)}>
+									<TouchableOpacity onPress={() => { deleteSession(s.id); refreshSessions() }}>
 										<Design.Text variant="text-sm/normal" style={styles.deleteTxt}>
 											Delete
 										</Design.Text>
@@ -579,6 +632,7 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 					</View>
 				</View>
 			</View>
+			</KeyboardAvoidingView>
 		</Modal>
 	)
 }
@@ -801,16 +855,17 @@ const styles = StyleSheet.create({
 	chipRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 4 },
 	chipTxt: { color: '#dbdee1', flex: 1 },
 	attachBtn: { backgroundColor: '#35373c', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, marginRight: 6 },
-	inputRow: { flexDirection: 'row', padding: 8, borderTopWidth: 1, borderTopColor: '#2b2d31' },
+	inputRow: { flexDirection: 'row', padding: 8, borderTopWidth: 1, borderTopColor: '#2b2d31', alignItems: 'center' },
 	chatInput: {
 		flex: 1,
 		backgroundColor: '#2b2d31',
-		borderRadius: 8,
+		borderRadius: 12,
 		paddingHorizontal: 12,
-		paddingVertical: 10,
+		paddingVertical: 12,
 		color: '#ffffff',
-		fontSize: 14,
+		fontSize: 15,
+		minHeight: 48,
 	},
-	sendBtn: { backgroundColor: '#5865f2', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center', marginLeft: 8 },
-	sendTxt: { color: '#ffffff' },
+	sendBtn: { backgroundColor: '#5865f2', borderRadius: 12, paddingHorizontal: 20, minWidth: 64, minHeight: 56, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+	sendTxt: { color: '#ffffff', fontSize: 22 },
 })
