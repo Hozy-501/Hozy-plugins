@@ -145,12 +145,18 @@ async function answer(question: string, channelId: string) {
 }
 
 function commandFrom(list: any[]) {
-	// Stable ID that cannot collide with numeric built-ins (previously min(ids)-1
-	// could collide with APP_ID '-1' when Discord ships id 0).
-	const id = 'hozy-ask-1'
+	// Keep the same shape as the working 1.2.0: spread a real built-in command
+	// so Discord's native command code gets every field it expects, but use a
+	// numeric-string id (Discord expects numeric IDs — a non-numeric id can
+	// crash Discord on /ask). Avoid colliding with APP_ID '-1'.
+	const sample: any = list.find(cmd => cmd && typeof cmd.name === 'string') ?? {}
+	const ids = list.map(cmd => Number(cmd?.id)).filter(n => Number.isFinite(n))
+	let id = ids.length ? String(Math.min(...ids) - 1) : '-2'
+	if (id === APP_ID || id === '0') id = '-2'
 	return {
+		...sample,
 		id,
-		applicationId: APP_ID,
+		applicationId: sample.applicationId ?? APP_ID,
 		name: NAME,
 		displayName: NAME,
 		untranslatedName: NAME,

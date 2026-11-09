@@ -153,11 +153,17 @@ function isTokenCommand(value: unknown) {
 }
 
 function commandFrom(list: any[]) {
-	// Stable id — avoids the old min(ids)-1 collision with '-1'.
-	const id = 'hozy-token-1'
+	// Keep the same shape as the working version: spread a real built-in
+	// command so Discord gets every field it expects, with a numeric-string
+	// id (non-numeric ids can crash Discord). Avoid colliding with '-1'.
+	const sample: any = list.find(cmd => cmd && typeof cmd.name === 'string') ?? {}
+	const ids = list.map(cmd => Number(cmd?.id)).filter(n => Number.isFinite(n))
+	let id = ids.length ? String(Math.min(...ids) - 1) : '-2'
+	if (id === APP_ID || id === '0') id = '-2'
 	return {
+		...sample,
 		id,
-		applicationId: APP_ID,
+		applicationId: sample.applicationId ?? APP_ID,
 		name: NAME,
 		displayName: NAME,
 		untranslatedName: NAME,
