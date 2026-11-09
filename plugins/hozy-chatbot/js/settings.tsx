@@ -15,8 +15,10 @@ import {
 } from 'react-native'
 import {
 	askLlm,
+	bytesToBase64,
 	DEFAULT_SYSTEM_PROMPT,
 	getProviderLabel,
+	type ChatAttachment,
 	type LlmProvider,
 } from './llm'
 
@@ -183,20 +185,129 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 	const [activeId, setActiveId] = useState<string | null>(null)
 	const [draft, setDraft] = useState('')
 	const [sending, setSending] = useState(false)
+	const [pending, setPending] = useState<ChatAttachment | null>(null)
+	const [urlMode, setUrlMode] = useState(false)
+	const [urlDraft, setUrlDraft] = useState('')
 
 	const active = useMemo(
 		() => sessions.find(s => s.id === activeId) ?? sessions[0] ?? null,
 		[sessions, activeId],
 	)
 
+	const tryNativePicker = async (): Promise<boolean> => {
+		// Attempt to use Discord's bundled pickers if present (image or document).
+		const propsToTry = [
+			'launchImageLibrary',
+			'launchImageLibraryAsync',
+			'pickImage',
+			'showImagePicker',
+			'openFile',
+			'pickDocument',
+		]
+		for (const prop of propsToTry) {
+			try {
+				const [found] = lookupModule(withProps(prop))
+				const mod: any = found as any
+				const fn = mod?.[prop] ?? mod?.default?.[prop]
+				if (typeof fn !== 'function') continue
+				const res = await fn.call(mod?.default ?? mod, {
+					mediaType: 'photo',
+					quality: 0.8,
+					selectionLimit: 1,
+				})
+				const asset =
+					res?.assets?.[0] ?? res?.asset ?? (typeof res?.uri === 'string' ? res : null)
+				if (!asset?.uri) continue
+				const uri: string = asset.uri
+				const filename: string = asset.fileName ?? asset.name ?? 'image.jpg'
+				const mime: string = asset.mimeType ?? asset.type ?? 'image/jpeg'
+				const downloaded = await fetch(uri).then(r => r.arrayBuffer())
+				const isText =
+					mime.startsWith('text/') ||
+					/\.(txt|md|json|js|ts|py|html|css|xml|csv)$/i.test(filename)
+				if (isText) {
+					try {
+						const decoder = new TextDecoder()
+						setPending({ filename, mime, text: decoder.decode(downloaded).slice(0, 8000) })
+					} catch {
+						setPending({ filename, mime, base64: bytesToBase64(downloaded) })
+					}
+				} else {
+					setPending({ filename, mime, base64: bytesToBase64(downloaded) })
+				}
+				showToast('File attached ✓', 'success')
+				return true
+			} catch {}
+		}
+		return false
+	}
+
+	const onUploadPressed = async () => {
+		const picked = await tryNativePicker()
+		if (!picked) {
+			// No native picker in this build — ask for a URL they can paste
+			setUrlMode(true)
+			showToast('Paste an HTTPS file URL below', 'default')
+		}
+	}
+
+	const attachUrl = async () => {
+		const url = urlDraft.trim()
+		if (!url) return
+		if (!/^https?:\/\//i.test(url)) {
+			showToast('Paste an https:// link', 'critical')
+			return
+		}
+		try {
+			const res = await fetch(url, {
+				headers: { 'User-Agent': 'Mozilla/5.0' },
+			} as any)
+			if (!res.ok) {
+				showToast(`Download failed (${res.status})`, 'critical')
+				return
+			}
+			const mime = (res.headers.get('content-type') as string) || 'application/octet-stream'
+			const buf = await res.arrayBuffer()
+			if (buf.byteLength > 5 * 1024 * 1024) {
+				showToast('File too large (max ~5 MB)', 'critical')
+				return
+			}
+			const filename = url.split('/').pop()?.split('?')[0] || 'file'
+			const isText =
+				mime.startsWith('text/') ||
+				/\.(txt|md|json|js|ts|py|html|css|xml|csv)$/i.test(filename)
+			if (isText) {
+				try {
+					const text = await res.clone().text().catch(() => '')
+					setPending({ filename, mime, text: text.slice(0, 8000) })
+				} catch {
+					setPending({ filename, mime, base64: bytesToBase64(buf) })
+				}
+			} else {
+				setPending({ filename, mime, base64: bytesToBase64(buf) })
+			}
+			setUrlDraft('')
+			setUrlMode(false)
+			showToast('File attached ✓', 'success')
+		} catch {
+			showToast('Could not download that URL', 'critical')
+		}
+	}
+
 	const send = async () => {
-		const text = draft.trim()
-		if (!text || sending) return
+		const text = draft.trim() || (pending ? 'Describe this attachment.' : '')
+		if ((!text && !pending) || sending) return
 		let session = active ?? newSession()
 		setDraft('')
 		setSending(true)
 
-		const userMsg: ChatMessage = { role: 'user', content: text, at: Date.now() }
+		const userMsg: ChatMessage = {
+			role: 'user',
+			content: pending ? `${text}\n📎 ${pending.filename}` : text,
+			at: Date.now(),
+		}
+		const attachment = pending
+		setPending(null)
 		session = {
 			...session,
 			title: session.messages.length === 0 ? text.slice(0, 40) : session.title,
@@ -208,7 +319,7 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 
 		try {
 			const settings = getSettings()
-			const result = await askLlm(settings, text)
+			const result = await askLlm(settings, text, attachment ?? undefined)
 			const assistantMsg: ChatMessage = { role: 'assistant', content: result.text.trim(), at: Date.now() }
 			const latest = getSessions().find(s => s.id === session.id) ?? session
 			upsertSession({
@@ -306,11 +417,51 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 								</Design.Text>
 							)}
 						</ScrollView>
+						{urlMode ? (
+							<View style={styles.urlRow}>
+								<TextInput
+									value={urlDraft}
+									onChangeText={setUrlDraft}
+									placeholder="Paste https:// file URL…"
+									placeholderTextColor="#949ba4"
+									autoCapitalize="none"
+									autoCorrect={false}
+									style={styles.urlInput}
+								/>
+								<TouchableOpacity style={styles.attachBtn} onPress={attachUrl}>
+									<Design.Text variant="text-sm/medium" style={styles.sendTxt}>
+										Attach
+									</Design.Text>
+								</TouchableOpacity>
+								<TouchableOpacity style={styles.attachBtn} onPress={() => setUrlMode(false)}>
+									<Design.Text variant="text-sm/medium" style={styles.sendTxt}>
+										✕
+									</Design.Text>
+								</TouchableOpacity>
+							</View>
+						) : null}
+						{pending ? (
+							<View style={styles.chipRow}>
+								<Design.Text variant="text-sm/medium" style={styles.chipTxt}>
+									📎 {pending.filename}
+								</Design.Text>
+								<TouchableOpacity onPress={() => setPending(null)}>
+									<Design.Text variant="text-sm/medium" style={styles.closeTxt}>
+										Remove
+									</Design.Text>
+								</TouchableOpacity>
+							</View>
+						) : null}
 						<View style={styles.inputRow}>
+							<TouchableOpacity style={styles.attachBtn} onPress={onUploadPressed}>
+								<Design.Text variant="text-md/medium" style={styles.sendTxt}>
+									📎
+								</Design.Text>
+							</TouchableOpacity>
 							<TextInput
 								value={draft}
 								onChangeText={setDraft}
-								placeholder="Message…"
+								placeholder="Message or ask about the file…"
 								placeholderTextColor="#949ba4"
 								multiline
 								style={styles.chatInput}
@@ -566,6 +717,20 @@ const styles = StyleSheet.create({
 	msgRole: { color: '#5865f2', marginBottom: 4 },
 	msgBody: { color: '#dbdee1' },
 	emptyTxt: { color: '#949ba4', padding: 16 },
+	urlRow: { flexDirection: 'row', paddingHorizontal: 8, paddingBottom: 4, alignItems: 'center' },
+	urlInput: {
+		flex: 1,
+		backgroundColor: '#2b2d31',
+		borderRadius: 8,
+		paddingHorizontal: 10,
+		paddingVertical: 8,
+		color: '#ffffff',
+		fontSize: 13,
+		marginRight: 6,
+	},
+	chipRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 4 },
+	chipTxt: { color: '#dbdee1', flex: 1 },
+	attachBtn: { backgroundColor: '#35373c', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, marginRight: 6 },
 	inputRow: { flexDirection: 'row', padding: 8, borderTopWidth: 1, borderTopColor: '#2b2d31' },
 	chatInput: {
 		flex: 1,

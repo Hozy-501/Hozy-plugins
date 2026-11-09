@@ -10,6 +10,7 @@ A Valenced plugin for Discord (Android) that answers your questions with one `/a
 
 - **`/ask <question>`** — type it in any chat; your question is **not** sent to the server
 - **Chat panel (in Settings)** — button `Open chat panel` opens a full chat window; **sessions on the right** (20 max, 50 msgs each), closable, survives restarts
+- **📎 Upload files** — attach an image or text file (`.txt/.md/.json/.js/.py…`) to any message; the bot reads it (images go to vision, text files go as context, up to ~5 MB)
 - **Code formatting** — answers render as monospace, copyable blocks; long code stays pretty
 - **Download** — `⬇ Download` copies the active session as **Markdown** for saving/sharing
 - **Any model** — Groq (free), Google Gemini (free via AI Studio), OpenAI, or any OpenAI-compatible endpoint

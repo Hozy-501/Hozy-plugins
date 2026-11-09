@@ -32,7 +32,7 @@ export function getProviderLabel(provider: LlmProvider): string {
 	}
 }
 
-function bytesToBase64(buffer: ArrayBuffer): string {
+export function bytesToBase64(buffer: ArrayBuffer): string {
 	const bytes = new Uint8Array(buffer)
 	let binary = ''
 	const chunk = 0x8000
@@ -243,12 +243,20 @@ async function chatGemini(
 	return { text, providerUsed: `Gemini (${model})` }
 }
 
+export interface ChatAttachment {
+	filename: string
+	mime: string
+	base64?: string
+	text?: string
+}
+
 export async function askLlm(
 	settings: LlmSettings,
 	question: string,
+	attachment?: ChatAttachment,
 ): Promise<LlmResult> {
 	const trimmed = question.trim()
-	if (!trimmed) throw new Error('Nothing to ask.')
+	if (!trimmed && !attachment) throw new Error('Nothing to ask.')
 
 	const urls = extractUrls(trimmed)
 	const urlContext = await fetchUrlContext(urls)
@@ -264,8 +272,22 @@ export async function askLlm(
 		}
 	}
 
-	if (settings.provider === 'gemini') {
-		return chatGemini(settings, trimmed, urlContext, imageBase64, imageMime)
+	let fileContext = urlContext
+	if (attachment?.text) {
+		const snippet = attachment.text.slice(0, 8000)
+		const fileBlock = `--- File: ${attachment.filename} ---\n${snippet}`
+		fileContext = fileContext ? `${fileContext}\n\n${fileBlock}` : fileBlock
+	} else if (attachment?.base64 && attachment.mime.startsWith('image/')) {
+		if (!imageBase64) {
+			imageBase64 = attachment.base64
+			imageMime = attachment.mime
+		}
 	}
-	return chatOpenAiCompatible(settings, trimmed, urlContext, imageBase64, imageMime)
+
+	const finalQuestion = trimmed || 'Describe this attachment.'
+
+	if (settings.provider === 'gemini') {
+		return chatGemini(settings, finalQuestion, fileContext, imageBase64, imageMime)
+	}
+	return chatOpenAiCompatible(settings, finalQuestion, fileContext, imageBase64, imageMime)
 }
