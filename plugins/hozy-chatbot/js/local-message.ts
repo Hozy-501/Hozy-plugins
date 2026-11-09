@@ -6,8 +6,18 @@ type AnyRecord = Record<string, any>
 const DISCORD_EPOCH = 1_420_070_400_000
 const AUTHOR_ID = '1081680102673653840'
 
+let snowflakeCounter = 0
+
 function snowflake(now = Date.now()): string {
-	return (BigInt(now - DISCORD_EPOCH) << 22n).toString()
+	// Add rotating increment bits so two messages in the same millisecond
+	// do not collide (previously every same-ms message shared id + nonce).
+	try {
+		snowflakeCounter = (snowflakeCounter + 1) % 0x400000
+		const base = BigInt(now - DISCORD_EPOCH) << 22n
+		return (base | BigInt(snowflakeCounter)).toString()
+	} catch {
+		return String(Date.now())
+	}
 }
 
 function unwrap(mod: unknown): AnyRecord | undefined {
@@ -86,7 +96,7 @@ export function sendLocalMessage(
 	content: string,
 	embeds?: AnyRecord[],
 ) {
-	if (!channelId) return false
+	if (!channelId || channelId === '-1' || channelId === '0') return false
 
 	try {
 		const botModule = findModule('createBotMessage')
@@ -107,21 +117,24 @@ export function sendLocalMessage(
 		message = buildMessage(channelId, content, embeds, message)
 
 		if (typeof receiveModule?.receiveMessage === 'function') {
-			receiveModule.receiveMessage(channelId, message)
-			return true
+			const res = receiveModule.receiveMessage(channelId, message)
+			// Only report success if Discord actually accepted it.
+			// Previously returned true unconditionally, so dropped messages
+			// looked delivered and callers never fell back to toast.
+			return res !== false
 		}
 
 		const dispatcher =
 			findModule('dispatch', 'isDispatching') ?? findModule('flushWaitQueue')
 		if (typeof dispatcher?.dispatch === 'function') {
-			dispatcher.dispatch({
+			const res = dispatcher.dispatch({
 				type: 'MESSAGE_CREATE',
 				channelId,
 				optimistic: true,
 				isPushNotification: false,
 				message,
 			})
-			return true
+			return res !== false
 		}
 	} catch (error) {
 		console.error("[Hozy's Chatbot] Failed to send local message:", error)

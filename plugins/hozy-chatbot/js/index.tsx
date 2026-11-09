@@ -1,8 +1,7 @@
 import { ToastActionCreators } from '@valenced/discord/actions'
 import { lookupModule, waitForModules } from '@valenced/modules/finders'
-import { withName, withProps } from '@valenced/modules/finders/filters'
-import { after, before, instead } from '@valenced/patcher'
-import { createElement, isValidElement } from 'react'
+import { withProps } from '@valenced/modules/finders/filters'
+import { after, instead } from '@valenced/patcher'
 import { askLlm } from './llm'
 import { sendLocalMessage } from './local-message'
 import { getSettings, getStorage, SettingsComponent } from './settings'
@@ -16,7 +15,11 @@ const CHAT = 1
 const BUILT_IN = 0
 const LAST = { priority: 9999 }
 
-const seenModules = new WeakSet<object>()
+/* Mutable WeakSet so stop() can clear it and allow re-patch on next start.
+   Previously `const` and never cleared -> plugin was dead after one stop/start. */
+let seenModules = new WeakSet<object>()
+const patchedSendModules = new Set<AnyRecord>()
+let moduleLoadedToastTimer: ReturnType<typeof setTimeout> | undefined
 
 function asModule(value: unknown): AnyRecord | undefined {
 	if (!value || typeof value !== 'object') return
@@ -64,19 +67,47 @@ function contentOf(value: unknown): string {
 	if (typeof value === 'string') return value
 	if (!value || typeof value !== 'object') return ''
 	const r = value as AnyRecord
-	return r.content ?? r.text ?? ''
+	const c = (r as AnyRecord).content ?? (r as AnyRecord).text ?? ''
+	// Content can be an array/object (embed/component message).
+	// Return '' instead of a non-string so callers can safely bail.
+	return typeof c === 'string' ? c : ''
 }
 
 function parseAsk(content: string): string | null {
+	if (typeof content !== 'string') return null
 	const text = content.trim()
 	if (!text) return null
 	// /ask <question> | !ask <question> | .ask <question>
-	const m = text.match(/^(?:\/|!|\.)ask\s+(.+)$/i)
+	const m = text.match(/^(?:\/|!|\.)ask\s+(.+)$/is)
 	if (m && m[1]) return m[1].trim()
 	return null
 }
 
+function isValidChannelId(id: string): boolean {
+	return !!id && id !== '-1' && id !== '0'
+}
+
+/** Split a long answer into Discord-safe chunks (2000 char limit). */
+function splitForDiscord(text: string, limit = 1900): string[] {
+	if (text.length <= limit) return [text]
+	const chunks: string[] = []
+	let rest = text
+	while (rest.length > limit) {
+		let cut = rest.lastIndexOf('\n', limit)
+		if (cut < limit * 0.4) cut = rest.lastIndexOf(' ', limit)
+		if (cut < 1) cut = limit
+		chunks.push(rest.slice(0, cut))
+		rest = rest.slice(cut).replace(/^\n+/, '')
+	}
+	if (rest) chunks.push(rest)
+	return chunks
+}
+
 async function answer(question: string, channelId: string) {
+	// Fix settings load race: ensure storage cache is loaded before reading key.
+	try {
+		await getStorage().get()
+	} catch {}
 	const settings = getSettings()
 	showToast('Asking…')
 	try {
@@ -88,12 +119,25 @@ async function answer(question: string, channelId: string) {
 		}
 		// Normal local message — Discord markdown (*, **, `code`, ```blocks) renders natively.
 		const body = `**${result.providerUsed}**\n\n${text}`
-		if (!channelId) {
-			showToast(text, 'success')
+		if (!isValidChannelId(channelId)) {
+			// No channel context — show as toast instead of guessing a stale channel.
+			// Truncate for toast readability.
+			showToast(text.slice(0, 180) + (text.length > 180 ? '…' : ''), 'success')
 			return
 		}
-		const sent = sendLocalMessage(channelId, body)
-		if (!sent) showToast(text, 'success')
+		// Send in chunks so long LLM answers are not dropped by Discord's 2000 limit.
+		const chunks = splitForDiscord(body)
+		let sentAny = false
+		for (const chunk of chunks) {
+			const sent = sendLocalMessage(channelId, chunk)
+			if (sent) sentAny = true
+			// If chunking fails midway, fall back to toast for remaining text.
+			if (!sent) {
+				showToast(text.slice(0, 180) + (text.length > 180 ? '…' : ''), 'success')
+				break
+			}
+		}
+		if (!sentAny) showToast(text.slice(0, 180) + '…', 'success')
 	} catch (error) {
 		const msg = error instanceof Error ? error.message : 'Chatbot failed'
 		showToast(formatError(msg), 'critical')
@@ -101,20 +145,18 @@ async function answer(question: string, channelId: string) {
 }
 
 function commandFrom(list: any[]) {
-	const sample = list.find(cmd => cmd && typeof cmd.name === 'string') ?? {}
-	const ids = list.map(cmd => Number(cmd?.id)).filter(n => Number.isFinite(n))
-	const id = ids.length ? String(Math.min(...ids) - 1) : '-2'
-
+	// Stable ID that cannot collide with numeric built-ins (previously min(ids)-1
+	// could collide with APP_ID '-1' when Discord ships id 0).
+	const id = 'hozy-ask-1'
 	return {
-		...sample,
 		id,
-		applicationId: sample.applicationId ?? APP_ID,
+		applicationId: APP_ID,
 		name: NAME,
 		displayName: NAME,
 		untranslatedName: NAME,
-		description: 'Ask Hozy\'s Chatbot locally',
-		displayDescription: 'Ask Hozy\'s Chatbot locally',
-		untranslatedDescription: 'Ask Hozy\'s Chatbot locally',
+		description: "Ask Hozy's Chatbot locally",
+		displayDescription: "Ask Hozy's Chatbot locally",
+		untranslatedDescription: "Ask Hozy's Chatbot locally",
 		inputType: BUILT_IN,
 		type: CHAT,
 		options: [{ name: 'prompt', type: 3, description: 'Your question', required: true }],
@@ -126,9 +168,8 @@ function commandFrom(list: any[]) {
 		__bunny: undefined,
 		execute: (args: any) => {
 			void (async () => {
-				const channelId = String(
-					args?.channelId ?? args?.channel_id ?? args?.applicationId ?? '',
-				)
+				// Only trust real channel fields — applicationId is an app ID, not a channel.
+				const channelId = String(args?.channelId ?? args?.channel_id ?? '')
 				const prompt =
 					(typeof args?.prompt === 'string' && args.prompt) ||
 					args?.options?.[0]?.value ||
@@ -173,30 +214,42 @@ function patchCommands(mod: AnyRecord | undefined, cleanup: Cleanup) {
 	)
 }
 
-let lastChannelId = ''
-
 function patchSend(mod: AnyRecord | undefined, cleanup: Cleanup) {
 	if (!mod || typeof mod.sendMessage !== 'function') return
 	if ((mod as any).__hozyAskSend) return
 	;(mod as any).__hozyAskSend = true
+	patchedSendModules.add(mod)
 	cleanup(
 		instead(
 			mod,
 			'sendMessage',
 			function (this: any, args: any[], original: (...a: any[]) => any) {
-				const message = args.length > 1 ? args[1] : args[0]
-				const content = contentOf(message)
-				const ask = parseAsk(content)
-				if (ask != null) {
-					const channelId =
-						(typeof message === 'object' && message !== null
-							? (message as AnyRecord).channel_id ??
-							  (message as AnyRecord).channelId ??
-							  ''
-							: '') ||
-						lastChannelId
-					void answer(ask, String(channelId || lastChannelId || ''))
-					return Promise.resolve({ valid: true, body: {} })
+				try {
+					const message = args.length > 1 ? args[1] : args[0]
+					const content = contentOf(message)
+					if (typeof content !== 'string') return original.apply(this, args)
+					const ask = parseAsk(content)
+					if (ask != null) {
+						// Use only the real channel from the message payload.
+						// Previously fell back to a global lastChannelId tracked from
+						// ANY dispatcher action — could deliver the private answer to
+						// a previously visited channel (privacy leak). Now we never guess.
+						const channelId =
+							typeof message === 'object' && message !== null
+								? (message as AnyRecord).channel_id ?? (message as AnyRecord).channelId ?? ''
+								: ''
+						const cid = String(channelId || '')
+						if (!isValidChannelId(cid)) {
+							// Still swallow the message (typed /ask must never go to the server)
+							// but tell the user we couldn't route the answer.
+							showToast('Could not determine channel for answer.', 'critical')
+						} else {
+							void answer(ask, cid)
+						}
+						return Promise.resolve({ valid: true, body: {} })
+					}
+				} catch (error) {
+					console.error("[Hozy's Chatbot] send intercept failed, forwarding to original:", error)
 				}
 				return original.apply(this, args)
 			},
@@ -206,62 +259,74 @@ function patchSend(mod: AnyRecord | undefined, cleanup: Cleanup) {
 }
 
 function attach(cleanup: Cleanup) {
+	let stopped = false
+	cleanup(() => {
+		stopped = true
+		if (moduleLoadedToastTimer) {
+			clearTimeout(moduleLoadedToastTimer)
+			moduleLoadedToastTimer = undefined
+		}
+	})
+
+	// Fail-open guard: if sendMessage never loads, typed /ask would be sent for
+	// real to Discord servers (leaking the question). Warn the user.
+	moduleLoadedToastTimer = setTimeout(() => {
+		if (stopped) return
+		if (patchedSendModules.size === 0) {
+			showToast('Chatbot module not loaded — /ask disabled until Discord loads it.', 'critical')
+		}
+	}, 5000)
+
 	cleanup(
 		waitForModules(withProps('getBuiltInCommands'), (exports: unknown) => {
+			if (stopped) return
 			patchCommands(asModule(exports) ?? (exports as AnyRecord), cleanup)
 		}),
 	)
 	try {
 		const [found] = lookupModule(withProps('getBuiltInCommands'))
-		if (found) patchCommands(asModule(found) ?? (found as AnyRecord), cleanup)
+		if (found && !stopped) patchCommands(asModule(found) ?? (found as AnyRecord), cleanup)
 	} catch {}
 
 	cleanup(
 		waitForModules(withProps('sendMessage', 'editMessage'), (exports: unknown) => {
+			if (stopped) return
 			patchSend(asModule(exports) ?? (exports as AnyRecord), cleanup)
 		}),
 	)
 	try {
 		const [found] = lookupModule(withProps('sendMessage', 'editMessage'))
-		if (found) patchSend(asModule(found) ?? (found as AnyRecord), cleanup)
+		if (found && !stopped) patchSend(asModule(found) ?? (found as AnyRecord), cleanup)
 	} catch {}
-}
-
-function rememberChannelFrom(action: any) {
-	const id = firstString(action?.channelId, action?.channel_id, action?.channel?.id)
-	if (id) lastChannelId = id
-}
-
-function firstString(...values: unknown[]): string | undefined {
-	for (const v of values) {
-		if (typeof v === 'string' && v.trim()) return v.trim()
-	}
 }
 
 export default plugin({
 	SettingsComponent,
 	start({ cleanup, logger }) {
 		logger.log("Hozy's Chatbot started.")
-		void getStorage().get()
+		// Pre-warm storage so getSettings() does not race with a cold cache.
+		void (async () => {
+			try {
+				await getStorage().get()
+			} catch {}
+		})()
 		attach(cleanup)
-
-		// Remember last channel so /ask answer can go back to the same chat
-		try {
-			const [dispatcher] = lookupModule(withProps('dispatch', 'isDispatching'))
-			const d = asModule(dispatcher) ?? (dispatcher as AnyRecord)
-			if (d && typeof d.dispatch === 'function') {
-				cleanup(
-					instead(d, 'dispatch', function (this: any, args: any[], original: (...a: any[]) => any) {
-						try {
-							rememberChannelFrom(args[0])
-						} catch {}
-						return original.apply(this, args)
-					}),
-				)
-			}
-		} catch {}
+		// Note: we intentionally do NOT intercept global dispatch.
+		// The answer channel is derived only from the /ask invocation itself.
 	},
 	stop({ logger }) {
 		logger.log("Hozy's Chatbot stopped.")
+		// Allow re-patch on next start (hot reload / disable->enable).
+		seenModules = new WeakSet<object>()
+		for (const mod of patchedSendModules) {
+			try {
+				delete (mod as any).__hozyAskSend
+			} catch {}
+		}
+		patchedSendModules.clear()
+		if (moduleLoadedToastTimer) {
+			clearTimeout(moduleLoadedToastTimer)
+			moduleLoadedToastTimer = undefined
+		}
 	},
 })

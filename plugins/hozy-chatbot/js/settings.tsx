@@ -4,7 +4,7 @@ import { Design } from '@valenced/discord/design'
 import { getJsonStorage, pluginStoragePathFor } from '@valenced/json-storage'
 import { lookupModule } from '@valenced/modules/finders'
 import { withProps } from '@valenced/modules/finders/filters'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
 	Modal,
 	ScrollView,
@@ -95,7 +95,17 @@ export function getSessions(): ChatSession[] {
 
 function newSession(): ChatSession {
 	const at = Date.now()
-	return { id: `s${at}`, title: 'New chat', createdAt: at, updatedAt: at, messages: [] }
+	// Random suffix avoids id collision on double-tap "+ New" within the same ms.
+	return { id: `s${at}-${Math.random().toString(36).slice(2, 7)}`, title: 'New chat', createdAt: at, updatedAt: at, messages: [] }
+}
+
+function persistSessions(list: ChatSession[]) {
+	try {
+		const p = getSessionsStorage().set(list) as unknown
+		Promise.resolve(p as any).catch((e: unknown) => console.error("[Hozy's Chatbot] sessions save failed:", e))
+	} catch (e) {
+		console.error("[Hozy's Chatbot] sessions save threw:", e)
+	}
 }
 
 function upsertSession(session: ChatSession) {
@@ -104,12 +114,12 @@ function upsertSession(session: ChatSession) {
 	const next = idx >= 0 ? [...list] : [session, ...list]
 	if (idx >= 0) next[idx] = session
 	const trimmed = [...next].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, MAX_SESSIONS)
-	void getSessionsStorage().set(trimmed)
+	persistSessions(trimmed)
 }
 
 function deleteSession(id: string) {
 	const list = getSessions().filter(s => s.id !== id)
-	void getSessionsStorage().set(list)
+	persistSessions(list)
 }
 
 function showToast(text: string, variant: 'default' | 'success' | 'critical' = 'default') {
@@ -161,11 +171,28 @@ function TextField({
 	secure?: boolean
 	multiline?: boolean
 }) {
+	// Debounce writes to disk: previously every keystroke triggered a
+	// JSON file write (write storm).
+	const [local, setLocal] = useState(value || '')
+	const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+	// Keep local in sync when the stored value changes externally.
+	useEffect(() => {
+		setLocal(value || '')
+	}, [value])
+	useEffect(() => {
+		return () => {
+			if (timerRef.current) clearTimeout(timerRef.current)
+		}
+	}, [])
 	return (
 		<View style={styles.fieldWrap}>
 			<TextInput
-				value={value || ''}
-				onChangeText={onChange}
+				value={local}
+				onChangeText={v => {
+					setLocal(v)
+					if (timerRef.current) clearTimeout(timerRef.current)
+					timerRef.current = setTimeout(() => onChange(v), 400)
+				}}
 				placeholder={placeholder}
 				placeholderTextColor="#949ba4"
 				secureTextEntry={secure}
@@ -188,6 +215,14 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 	const [pending, setPending] = useState<ChatAttachment | null>(null)
 	const [urlMode, setUrlMode] = useState(false)
 	const [urlDraft, setUrlDraft] = useState('')
+	const cancelledRef = useRef(false)
+	const sendingRef = useRef(false)
+	useEffect(() => {
+		cancelledRef.current = false
+		return () => {
+			cancelledRef.current = true
+		}
+	}, [])
 
 	const active = useMemo(
 		() => sessions.find(s => s.id === activeId) ?? sessions[0] ?? null,
@@ -222,6 +257,10 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 				const filename: string = asset.fileName ?? asset.name ?? 'image.jpg'
 				const mime: string = asset.mimeType ?? asset.type ?? 'image/jpeg'
 				const downloaded = await fetch(uri).then(r => r.arrayBuffer())
+				if (downloaded.byteLength > 5 * 1024 * 1024) {
+					showToast('File too large (max ~5 MB)', 'critical')
+					continue
+				}
 				const isText =
 					mime.startsWith('text/') ||
 					/\.(txt|md|json|js|ts|py|html|css|xml|csv)$/i.test(filename)
@@ -254,31 +293,54 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 	const attachUrl = async () => {
 		const url = urlDraft.trim()
 		if (!url) return
-		if (!/^https?:\/\//i.test(url)) {
-			showToast('Paste an https:// link', 'critical')
+		if (!/^https:\/\//i.test(url)) {
+			showToast('Paste an https:// link (plain http is refused)', 'critical')
 			return
 		}
+		const controller = new AbortController()
+		const timer = setTimeout(() => {
+			try {
+				controller.abort()
+			} catch {}
+		}, 10000)
 		try {
 			const res = await fetch(url, {
 				headers: { 'User-Agent': 'Mozilla/5.0' },
+				signal: controller.signal,
 			} as any)
 			if (!res.ok) {
 				showToast(`Download failed (${res.status})`, 'critical')
 				return
 			}
 			const mime = (res.headers.get('content-type') as string) || 'application/octet-stream'
+			try {
+				const len = res.headers.get('content-length')
+				if (len && Number(len) > 5 * 1024 * 1024) {
+					showToast('File too large (max ~5 MB)', 'critical')
+					return
+				}
+			} catch {}
 			const buf = await res.arrayBuffer()
 			if (buf.byteLength > 5 * 1024 * 1024) {
 				showToast('File too large (max ~5 MB)', 'critical')
 				return
 			}
-			const filename = url.split('/').pop()?.split('?')[0] || 'file'
+			const filename = (() => {
+				try {
+					return decodeURIComponent(url.split('/').pop()?.split('?')[0]?.split('#')[0] || 'file') || 'file'
+				} catch {
+					return url.split('/').pop()?.split('?')[0] || 'file'
+				}
+			})()
 			const isText =
 				mime.startsWith('text/') ||
 				/\.(txt|md|json|js|ts|py|html|css|xml|csv)$/i.test(filename)
 			if (isText) {
+				// Decode the already-downloaded buffer directly.
+				// Previously used res.clone().text() after arrayBuffer() consumed the body,
+				// which silently produced empty text.
 				try {
-					const text = await res.clone().text().catch(() => '')
+					const text = new TextDecoder().decode(buf)
 					setPending({ filename, mime, text: text.slice(0, 8000) })
 				} catch {
 					setPending({ filename, mime, base64: bytesToBase64(buf) })
@@ -291,14 +353,17 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 			showToast('File attached ✓', 'success')
 		} catch {
 			showToast('Could not download that URL', 'critical')
+		} finally {
+			clearTimeout(timer)
 		}
 	}
 
 	const send = async () => {
 		const text = draft.trim() || (pending ? 'Describe this attachment.' : '')
-		if ((!text && !pending) || sending) return
+		if ((!text && !pending) || sendingRef.current) return
 		let session = active ?? newSession()
 		setDraft('')
+		sendingRef.current = true
 		setSending(true)
 
 		const userMsg: ChatMessage = {
@@ -315,34 +380,40 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 			messages: [...session.messages, userMsg].slice(-MAX_MSGS),
 		}
 		upsertSession(session)
-		setActiveId(session.id)
+		if (!cancelledRef.current) setActiveId(session.id)
 
 		try {
 			const settings = getSettings()
 			const result = await askLlm(settings, text, attachment ?? undefined)
+			if (cancelledRef.current) return
 			const assistantMsg: ChatMessage = { role: 'assistant', content: result.text.trim(), at: Date.now() }
-			const latest = getSessions().find(s => s.id === session.id) ?? session
+			const latest = getSessions().find(s => s.id === session.id)
+			// If user deleted the session while we were waiting, do not resurrect it.
+			if (!latest) return
 			upsertSession({
 				...latest,
 				updatedAt: Date.now(),
 				messages: [...latest.messages, assistantMsg].slice(-MAX_MSGS),
 			})
 		} catch (error) {
+			if (cancelledRef.current) return
 			const msg = error instanceof Error ? error.message : 'Chatbot failed'
 			showToast(formatError(msg), 'critical')
 			try {
-				const latest = getSessions().find(s => s.id === session.id) ?? session
+				const latest = getSessions().find(s => s.id === session.id)
+				if (!latest) return
 				upsertSession({
 					...latest,
 					updatedAt: Date.now(),
 					messages: [
 						...latest.messages,
-						{ role: 'assistant', content: `Error: ${formatError(msg)}`, at: Date.now() },
+						{ role: 'assistant' as const, content: `Error: ${formatError(msg)}`, at: Date.now() },
 					].slice(-MAX_MSGS),
 				})
 			} catch {}
 		} finally {
-			setSending(false)
+			sendingRef.current = false
+			if (!cancelledRef.current) setSending(false)
 		}
 	}
 
@@ -389,7 +460,7 @@ function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 						onPress={() => active && downloadSession(active)}
 					>
 						<Design.Text variant="text-md/medium" style={styles.closeTxt}>
-							⬇ Download
+							Copy MD
 						</Design.Text>
 					</TouchableOpacity>
 				</View>
@@ -547,29 +618,26 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 						value={provider}
 						onChange={(val: LlmProvider) => storage.set({ provider: val })}
 					>
+						{/* Single writer: group onChange only. Per-row onPress double-writes removed. */}
 						<Design.TableRadioRow
 							label="Groq (free, recommended)"
 							subLabel="Fast, free tier, OpenAI-compatible"
 							value="groq"
-							onPress={() => storage.set({ provider: 'groq' as LlmProvider })}
 						/>
 						<Design.TableRadioRow
 							label="Google Gemini"
 							subLabel="Great with images, free via AI Studio"
 							value="gemini"
-							onPress={() => storage.set({ provider: 'gemini' as LlmProvider })}
 						/>
 						<Design.TableRadioRow
 							label="OpenAI"
 							subLabel="Paid, GPT models"
 							value="openai"
-							onPress={() => storage.set({ provider: 'openai' as LlmProvider })}
 						/>
 						<Design.TableRadioRow
 							label="Custom OpenAI-compatible"
 							subLabel="Your own endpoint"
 							value="custom"
-							onPress={() => storage.set({ provider: 'custom' as LlmProvider })}
 						/>
 					</Design.TableRadioGroup>
 					<Design.TableRow
@@ -651,7 +719,9 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 					<Design.TableRow label="/ask" subLabel="Local only" />
 				</Design.TableRowGroup>
 			</ScrollView>
-			<ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />
+			{/* Conditional render so the panel unmounts when closed:
+			    previously always mounted, keeping storage subscription + 5MB draft alive. */}
+			{chatOpen ? <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} /> : null}
 		</Page>
 	)
 }
