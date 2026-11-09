@@ -132,6 +132,8 @@ const FILTERS = [
 	{ id: 'media', label: '🖼 Media' },
 	{ id: 'voice', label: '🎤 Voice' },
 	{ id: 'link', label: '🔗 Links' },
+	{ id: 'srv', label: '🏢 Servers' },
+	{ id: 'dm', label: '💬 DMs' },
 	{ id: 'fav', label: '⭐ Favorites' },
 ] as const
 
@@ -145,9 +147,20 @@ function matchesFilters(entry: GhostEntry, filters: Set<FilterId>): boolean {
 		if (f === 'media' && (entry.attachments?.length ?? 0) > 0) return true
 		if (f === 'voice' && (entry.isVoice || entry.attachments?.some(a => a.voice))) return true
 		if (f === 'link' && entry.hasLink) return true
+		if (f === 'srv' && entry.scope === 'server') return true
+		if (f === 'dm' && (entry.scope === 'dm' || entry.scope === 'group' || entry.scope === 'unknown')) return true
 		if (f === 'fav' && entry.favorite) return true
 	}
 	return false
+}
+
+function locationText(entry: GhostEntry): string {
+	if (entry.scope === 'server') {
+		return entry.guildName ? `🏢 ${entry.guildName}` : `🏢 Server ${entry.guildId?.slice(0, 6) ?? ''}`
+	}
+	if (entry.scope === 'group') return '💬 Group DM'
+	if (entry.scope === 'dm' || entry.scope === 'unknown') return '💬 DM'
+	return ''
 }
 
 export function SettingsComponent(_props?: { api?: unknown }) {
@@ -190,7 +203,7 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 		for (const entry of log) {
 			if (!matchesFilters(entry, filters)) continue
 			if (q) {
-				const hay = `${entry.author} ${entry.displayName ?? ''} ${entry.oldContent} ${entry.newContent ?? ''}`.toLowerCase()
+				const hay = `${entry.author} ${entry.displayName ?? ''} ${entry.guildName ?? ''} ${entry.guildId ?? ''} ${entry.oldContent} ${entry.newContent ?? ''}`.toLowerCase()
 				if (!hay.includes(q)) continue
 			}
 			const key = entry.authorId || entry.author
@@ -327,6 +340,9 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 															{formatDate(entry.at)}
 														</Design.Text>
 													</View>
+													<Design.Text variant="text-sm/normal" style={styles.entryLocation}>
+														{locationText(entry)}
+													</Design.Text>
 													{entry.oldContent ? (
 														<Design.Text variant="text-sm/normal" selectable style={styles.entryBody}>
 															{entry.oldContent}
@@ -488,5 +504,6 @@ const styles = StyleSheet.create({
 	entryDate: { color: '#949ba4', marginLeft: 8, flex: 1, textAlign: 'right' },
 	entryBody: { color: '#dbdee1' },
 	entryNew: { color: '#b5bac1', marginTop: 4 },
+	entryLocation: { color: '#5865f2', marginTop: 2, fontSize: 12 },
 	entryMedia: { color: '#949ba4', marginTop: 4 },
 })

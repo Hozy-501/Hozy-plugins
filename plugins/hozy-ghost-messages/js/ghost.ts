@@ -17,6 +17,9 @@ export interface RecentMessage {
 	attachments?: AttachmentInfo[]
 	hasLink?: boolean
 	isVoice?: boolean
+	scope?: 'server' | 'dm' | 'group' | 'unknown'
+	guildId?: string
+	guildName?: string
 	at: number
 }
 
@@ -34,6 +37,9 @@ export interface GhostEntry {
 	hasLink?: boolean
 	isVoice?: boolean
 	favorite?: boolean
+	scope?: 'server' | 'dm' | 'group' | 'unknown'
+	guildId?: string
+	guildName?: string
 	at: number
 }
 
@@ -114,6 +120,9 @@ export interface TrackEditExtra {
 	attachments?: AttachmentInfo[]
 	hasLink?: boolean
 	isVoice?: boolean
+	scope?: 'server' | 'dm' | 'group' | 'unknown'
+	guildId?: string
+	guildName?: string
 }
 
 export function trackEdit(
@@ -143,6 +152,9 @@ export function trackEdit(
 				hasLink: extra?.hasLink ?? hasLinkIn(newContent),
 				isVoice: extra?.isVoice,
 				favorite: false,
+				scope: extra?.scope,
+				guildId: extra?.guildId,
+				guildName: extra?.guildName,
 				at,
 			}
 			const log = [entry, ...data.log].slice(0, MAX_LOG)
@@ -156,6 +168,9 @@ export function trackEdit(
 					attachments,
 					hasLink: entry.hasLink,
 					isVoice: entry.isVoice,
+					scope: extra?.scope,
+					guildId: extra?.guildId,
+					guildName: extra?.guildName,
 					at,
 				} as RecentMessage,
 			}
@@ -183,6 +198,9 @@ export function trackEdit(
 			hasLink: prev.hasLink,
 			isVoice: prev.isVoice,
 			favorite: false,
+			scope: extra?.scope ?? prev.scope,
+			guildId: extra?.guildId ?? prev.guildId,
+			guildName: extra?.guildName ?? prev.guildName,
 			at,
 		}
 		const log = [entry, ...data.log].slice(0, MAX_LOG)
@@ -224,6 +242,9 @@ export function trackDelete(id: string, channelId: string): GhostEntry | undefin
 			hasLink: prev.hasLink,
 			isVoice: prev.isVoice,
 			favorite: false,
+			scope: prev.scope,
+			guildId: prev.guildId,
+			guildName: prev.guildName,
 			at,
 		}
 		const recent = { ...data.recent }
@@ -294,7 +315,8 @@ export function exportGhosts(format: ExportFormat): string {
 		]
 		for (const e of log) {
 			const author = e.displayName ? `${e.displayName} (@${e.author})` : `@${e.author}`
-			lines.push(`## ${e.type === 'delete' ? '🗑 Deleted' : '✏️ Edited'} — ${author}`)
+			const loc = e.scope === 'server' ? `🏢 ${e.guildName ?? e.guildId ?? 'Server'}` : '💬 DM'
+			lines.push(`## ${e.type === 'delete' ? '🗑 Deleted' : '✏️ Edited'} — ${author} • ${loc}`)
 			lines.push(`- Date: ${formatDateTime(e.at)} • Msg: ${e.id} • Channel: ${e.channelId || '-'}`)
 			if (mediaText(e.attachments, e.isVoice))
 				lines.push(`- Media: ${mediaText(e.attachments, e.isVoice)}`)
@@ -313,7 +335,8 @@ export function exportGhosts(format: ExportFormat): string {
 	]
 	for (const e of log) {
 		const author = e.displayName ? `${e.displayName} (@${e.author})` : `@${e.author}`
-		lines.push(`[${formatDateTime(e.at)}] [${e.type.toUpperCase()}] ${author}`)
+		const loc = e.scope === 'server' ? `🏢 ${e.guildName ?? e.guildId ?? 'Server'}` : '💬 DM'
+		lines.push(`[${formatDateTime(e.at)}] [${e.type.toUpperCase()}] ${author} • ${loc}`)
 		lines.push(`  Msg: ${e.id}  Channel: ${e.channelId || '-'}`)
 		if (mediaText(e.attachments, e.isVoice)) lines.push(`  Media: ${mediaText(e.attachments, e.isVoice)}`)
 		lines.push(`  Old: ${e.oldContent || '(media only)'}`)
@@ -362,6 +385,9 @@ export function importGhosts(jsonStr: string): ImportResult {
 				hasLink: Boolean(item.hasLink),
 				isVoice: Boolean(item.isVoice),
 				favorite: Boolean(item.favorite),
+				scope: item.scope === 'server' || item.scope === 'dm' || item.scope === 'group' ? item.scope : 'unknown',
+				guildId: typeof item.guildId === 'string' ? item.guildId : undefined,
+				guildName: typeof item.guildName === 'string' ? item.guildName : undefined,
 				at: ts,
 			}
 			const k = ghostKey(entry)

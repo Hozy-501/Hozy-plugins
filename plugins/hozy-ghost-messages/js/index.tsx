@@ -123,6 +123,58 @@ function mediaLabel(attachments: AttachmentInfo[] | undefined, isVoice?: boolean
 	return parts.join(' • ')
 }
 
+function extractGuildId(msg: any): string | undefined {
+	return firstString(msg?.guild_id, msg?.guildId, msg?.guild?.id)
+}
+
+function resolveScope(
+	channelId: string,
+	guildId: string | undefined,
+	msg: any,
+): { scope: 'server' | 'dm' | 'group' | 'unknown'; guildId?: string; guildName?: string } {
+	// Fast path: guild_id present => server.
+	if (guildId) {
+		let guildName: string | undefined
+		try {
+			const [found] = lookupModule(withProps('getGuild'))
+			const store: AnyRecord = asStore(found)
+			const guild = store?.getGuild?.(guildId)
+			guildName = guild?.name ?? guild?.acronym
+		} catch {}
+		return { scope: 'server', guildId, guildName }
+	}
+	// Channel lookup fallback for DM/group distinction
+	try {
+		const [found] = lookupModule(withProps('getChannel'))
+		const store: AnyRecord = asStore(found)
+		const channel = channelId ? store?.getChannel?.(channelId) : undefined
+		const type = channel?.type
+		if (type === 3) return { scope: 'group' }
+		if (type === 1) return { scope: 'dm' }
+		// Guild text/channel without guild_id on the message object
+		const cid = channel?.guild_id ?? channel?.guildId
+		if (cid) {
+			let guildName: string | undefined
+			try {
+				const [g] = lookupModule(withProps('getGuild'))
+				guildName = (asStore(g)?.getGuild?.(cid as string) as any)?.name
+			} catch {}
+			return { scope: 'server', guildId: cid as string, guildName }
+		}
+	} catch {}
+	// No guild_id and no channel info => assume DM (covers user DMs + group fallback)
+	return { scope: 'dm' }
+}
+
+function asStore(value: unknown): AnyRecord | undefined {
+	if (!value || typeof value !== 'object') return undefined
+	const rec = value as AnyRecord
+	if (typeof rec.getChannel === 'function' || typeof rec.getGuild === 'function') return rec
+	const dflt = rec.default
+	if (dflt && typeof dflt === 'object') return dflt as AnyRecord
+	return rec
+}
+
 function handleAction(action: any) {
 	if (!action || typeof action !== 'object') return
 	const settings = getSettings()
@@ -139,9 +191,11 @@ function handleAction(action: any) {
 		if (!content && attachments.length === 0) return
 		const author = extractAuthor(msg)
 		const isVoice = attachments.some(a => a.voice)
+		const channelId = channelIdOf(action)
+		const scopeInfo = resolveScope(channelId, extractGuildId(msg), msg)
 		trackCreate({
 			id,
-			channelId: channelIdOf(action),
+			channelId,
 			author: author.author,
 			displayName: author.displayName,
 			authorId: author.authorId,
@@ -149,6 +203,9 @@ function handleAction(action: any) {
 			attachments: attachments.length ? attachments : undefined,
 			hasLink: hasLinkIn(content),
 			isVoice: isVoice ? true : undefined,
+			scope: scopeInfo.scope,
+			guildId: scopeInfo.guildId,
+			guildName: scopeInfo.guildName,
 			at: Date.now(),
 		})
 		return
@@ -163,10 +220,15 @@ function handleAction(action: any) {
 		const attachments = extractAttachments(msg)
 		// A delete/edit that only changes media (voice/image) still counts
 		if (!newContent && attachments.length === 0) return
-		const entry = trackEdit(id, newContent, channelIdOf(action), {
+		const channelId = channelIdOf(action)
+		const scopeInfo = resolveScope(channelId, extractGuildId(msg), msg)
+		const entry = trackEdit(id, newContent, channelId, {
 			attachments: attachments.length ? attachments : undefined,
 			hasLink: hasLinkIn(newContent),
 			isVoice: attachments.some(a => a.voice) ? true : undefined,
+			scope: scopeInfo.scope,
+			guildId: scopeInfo.guildId,
+			guildName: scopeInfo.guildName,
 		})
 		if (entry && settings.notifyEdit) {
 			const media = mediaLabel(entry.attachments, entry.isVoice)
