@@ -236,13 +236,26 @@
       "author": "Hozy",
       "icon": "ChatIcon",
       "channels": {
-        "latest": "1.0.0"
+        "latest": "1.1.0"
       },
       "versions": {
         "1.0.0": {
           "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.chatbot@1.0.0.zip",
           "sha256": "cbfe0ab59d3acdcc065ffc44ab7f73d3ac98fe78b3896ab0533d1d577cd0eb70",
           "size": 6232,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "1.1.0": {
+          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.chatbot@1.1.0.zip",
+          "sha256": "90a823da558d68cfa07af1d31aec1e5b83b9eeded0b27224b12faf0bca2043e1",
+          "size": 7981,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
