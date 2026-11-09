@@ -1,688 +1,586 @@
 {
-  "format": 1,
-  "name": "My Plugin Repository",
-  "description": "Example plugin repository from the Valenced plugin template.",
-  "plugins": {
-    "com.example.always-errors": {
-      "name": "Always Errors",
-      "description": "A plugin that always throws errors.",
-      "author": "Your Name <643945264868098049> (https://discord.com \"Website\")",
-      "icon": "CircleErrorIcon",
-      "channels": {
-        "latest": "1.0.0"
-      },
-      "versions": {
-        "1.0.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.example.always-errors@1.0.0.zip",
-          "sha256": "aaec30836f15911bf55c2c44053374e9d468df2afcc0c81a3d0145ff2f12204a",
-          "size": 595,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        }
-      }
-    },
-    "com.example.dependent": {
-      "name": "Example Dependent",
-      "description": "Depends on Example Library. Also installs the library.",
-      "author": "Your Name <643945264868098049> (https://discord.com \"Website\")",
-      "channels": {
-        "latest": "1.0.0"
-      },
-      "versions": {
-        "1.0.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.example.dependent@1.0.0.zip",
-          "sha256": "bdf266f60b57856a4b3018c9763e1ddc15639ccfca1ca898e6970e4114838d76",
-          "size": 636,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            },
-            "com.example.library": {
-              "version": ">=1 <2"
-            }
-          }
-        }
-      }
-    },
-    "com.example.emojis": {
-      "name": "Example Emojis",
-      "description": "Example emoji packs for Valenced.",
-      "author": "Your Name",
-      "channels": {
-        "latest": "1.0.0"
-      },
-      "versions": {
-        "1.0.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.example.emojis@1.0.0.zip",
-          "sha256": "b3195176d6bafd4d691d0e3777ff437de53988123e9c6ba9686f91cc552531a3",
-          "size": 7328,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            },
-            "valenced.api.themes": {
-              "version": "*"
-            }
-          }
-        }
-      }
-    },
-    "com.example.fonts": {
-      "name": "Example Fonts",
-      "description": "Example font packs for Valenced.",
-      "author": "Your Name",
-      "channels": {
-        "latest": "1.0.0"
-      },
-      "versions": {
-        "1.0.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.example.fonts@1.0.0.zip",
-          "sha256": "2fdfe20a9eaa30606f8fd1a21dd3b30401b6650d2be5d34683baaab255613a6d",
-          "size": 2424124,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            },
-            "valenced.api.themes": {
-              "version": "*"
-            }
-          }
-        }
-      }
-    },
-    "com.example.icons": {
-      "name": "Example Icons",
-      "description": "Example icon packs for Valenced.",
-      "author": "Your Name",
-      "channels": {
-        "latest": "1.1.0"
-      },
-      "versions": {
-        "1.1.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.example.icons@1.1.0.zip",
-          "sha256": "4b443c9ad15c5a41746e612c15cc70abc9387de329633efdd3a1cdc8672d5781",
-          "size": 6806,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            },
-            "valenced.api.themes": {
-              "version": "*"
-            }
-          }
-        }
-      }
-    },
-    "com.example.js-plugin": {
-      "name": "JS Plugin",
-      "description": "A JS-only example plugin without any native code.",
-      "author": "Your Name <643945264868098049> (https://discord.com \"Website\")",
-      "channels": {
-        "latest": "1.0.0"
-      },
-      "versions": {
-        "1.0.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.example.js-plugin@1.0.0.zip",
-          "sha256": "ea0d58776dee395d1a30f5bbf98d778daa95a8cb224ab470fe6195d0a4fba1d5",
-          "size": 607,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        }
-      }
-    },
-    "com.example.library": {
-      "name": "Example Library",
-      "description": "A plugin other plugins can depend on. See Example Dependent.",
-      "author": "Your Name <643945264868098049> (https://discord.com \"Website\")",
-      "channels": {
-        "latest": "1.0.0"
-      },
-      "versions": {
-        "1.0.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.example.library@1.0.0.zip",
-          "sha256": "f67417253b8cd3ce708ac2b9a1625cd74b1b1b5e401ce9c5b7fb278f058174f0",
-          "size": 636,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        }
-      }
-    },
-    "com.example.plugin": {
-      "name": "Example Plugin",
-      "description": "An example Valenced plugin built from the template.",
-      "author": "Your Name <643945264868098049> (https://discord.com \"Website\")",
-      "contributors": [
-        "Someone Else <669627189624307712> (mailto:support@discord.com)",
-        "Some Other Person"
-      ],
-      "channels": {
-        "latest": "1.0.0"
-      },
-      "versions": {
-        "1.0.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.example.plugin@1.0.0.zip",
-          "sha256": "ecc953b68449d5182a087fb4cdc5ffd944f9874d9d16a47b8adb2f389b6194c2",
-          "size": 5743,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        }
-      }
-    },
-    "com.example.themes": {
-      "name": "Example Themes",
-      "description": "Example themes for Valenced.",
-      "author": "Your Name",
-      "channels": {
-        "latest": "1.0.0"
-      },
-      "versions": {
-        "1.0.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.example.themes@1.0.0.zip",
-          "sha256": "148b3e9bdd09554a3b2ee9e64b1b57b74cebe9fcf73657b4cc75028ac9e7b5dd",
-          "size": 91229,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            },
-            "valenced.api.themes": {
-              "version": "*"
-            }
-          }
-        }
-      }
-    },
-    "com.hozy.chatbot": {
-      "name": "Hozy's Chatbot",
-      "description": "Hozy's Chatbot answers you in Discord with one /ask command — local-only, markdown, reads links and images.",
-      "author": "Hozy",
-      "icon": "ChatIcon",
-      "channels": {
-        "latest": "1.2.4"
-      },
-      "versions": {
-        "1.0.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.chatbot@1.0.0.zip",
-          "sha256": "cbfe0ab59d3acdcc065ffc44ab7f73d3ac98fe78b3896ab0533d1d577cd0eb70",
-          "size": 6232,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.1.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.chatbot@1.1.0.zip",
-          "sha256": "90a823da558d68cfa07af1d31aec1e5b83b9eeded0b27224b12faf0bca2043e1",
-          "size": 7981,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.2.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.chatbot@1.2.0.zip",
-          "sha256": "8fca58c11454a7974ba43a33e9f8d818ebb22caf984e56f984d437b463874f23",
-          "size": 8995,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.2.1": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.chatbot@1.2.1.zip",
-          "sha256": "b6bdba1412bfd3bbbef39870192f7373ac9e3d2c036b99ee7738d6b1056bb3b3",
-          "size": 10173,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.2.2": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.chatbot@1.2.2.zip",
-          "sha256": "b7bce3d3d1d96da043fe122fe4e79dff9acb12509fd1741fbd45794a878c89c1",
-          "size": 10247,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.2.3": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.chatbot@1.2.3.zip",
-          "sha256": "126e97f993b9f2c1c3c42ba79fd47ad39b774ed1722cd2aa3ee103c28690e376",
-          "size": 10100,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.2.4": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.chatbot@1.2.4.zip",
-          "sha256": "24aaaec74273a26ebbce013596cef2e357e254af326bac9eb582623dfc771ef3",
-          "size": 10727,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        }
-      }
-    },
-    "com.hozy.ghost-messages": {
-      "name": "Hozy's Ghost Messages",
-      "description": "Hozy's Ghost Messages saves edited and deleted messages locally, even after you restart the app.",
-      "author": "Hozy",
-      "icon": "HistoryIcon",
-      "channels": {
-        "latest": "1.2.0"
-      },
-      "versions": {
-        "1.0.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.ghost-messages@1.0.0.zip",
-          "sha256": "b34ac1fe60ad62212f8f3ea38d175426fb1f5847be7056fc1e4f575e10eb8c95",
-          "size": 2903,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.1.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.ghost-messages@1.1.0.zip",
-          "sha256": "8dd889d92f0abc9bd5ced58766734caee78135827edc3f4b49772212d22be100",
-          "size": 5152,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.2.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.ghost-messages@1.2.0.zip",
-          "sha256": "feb8418fac68f3474ffc61427abbd0811710474a90448bc0f579306c140f8b0a",
-          "size": 6729,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        }
-      }
-    },
-    "com.hozy.image-ocr": {
-      "name": "Hozy's Image OCR",
-      "description": "Hozy's Image OCR extracts text from any image in Discord with one long-press action and shows the result only to you.",
-      "author": "Hozy",
-      "icon": "TextIcon",
-      "channels": {
-        "latest": "1.0.3"
-      },
-      "versions": {
-        "1.0.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.image-ocr@1.0.0.zip",
-          "sha256": "0748f739bbcddd13d3da3d5037c85b55bebeb663f0f1cca3297784332607d071",
-          "size": 6557,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.0.1": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.image-ocr@1.0.1.zip",
-          "sha256": "161e8a35e107cfc3b64cc5eab1864acc27757a1ba8cab9c8b59b65c7f30dc835",
-          "size": 7740,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.0.2": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.image-ocr@1.0.2.zip",
-          "sha256": "6429d893d1b06fcca4e631fbd821248afc092e1b1bba15c0490a7138d3b2cb1e",
-          "size": 7570,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.0.3": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.image-ocr@1.0.3.zip",
-          "sha256": "9ee312c6bb9892a29598fd0604f097760f9ac130482c8b245ba8309ef86648cd",
-          "size": 8781,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        }
-      }
-    },
-    "com.hozy.translator": {
-      "name": "Hozy's Translator",
-      "description": "Hozy's Translator adds a translate action to Discord message menus and shows the result only to you.",
-      "author": "Hozy",
-      "icon": "TranslateIcon",
-      "channels": {
-        "latest": "1.0.2"
-      },
-      "versions": {
-        "1.0.1": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.translator@1.0.1.zip",
-          "sha256": "42ee41d49d0ccde4b86d0a1c035bf899b08a238e115bd009aca8be0a813a5814",
-          "size": 6888,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.0.2": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.translator@1.0.2.zip",
-          "sha256": "cc40cace14fcfcaaf1dd5d059be8026b3f2209ad53e3589ca8d04da039b3ffdc",
-          "size": 7044,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        }
-      }
-    },
-    "com.hozy.voice-transcriber": {
-      "name": "Hozy's Voice Transcriber",
-      "description": "Hozy's Voice Transcriber converts Discord voice messages to text with one long-press action and shows the result only to you.",
-      "author": "Hozy",
-      "icon": "VoiceIcon",
-      "channels": {
-        "latest": "1.0.3"
-      },
-      "versions": {
-        "1.0.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.voice-transcriber@1.0.0.zip",
-          "sha256": "4da7dc6ec1c5075f042a3289ef75559f69830da3bf60ca6cbf806ba61358a958",
-          "size": 9328,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.0.1": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.voice-transcriber@1.0.1.zip",
-          "sha256": "ca6196015b50de3e486deb2f258ea1e909fa34d262b8ac88ec4b308108234b84",
-          "size": 9300,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.0.2": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.voice-transcriber@1.0.2.zip",
-          "sha256": "1e7177ca27f1198be4f6b514b9831ae19d67bdee79ac7ae191c19006d92a512f",
-          "size": 9647,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.0.3": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.voice-transcriber@1.0.3.zip",
-          "sha256": "b633ec471ad6cd955091c356d5208d55b6eb54fc3f79b43b668bca52d2a29a70",
-          "size": 9700,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        }
-      }
-    },
-    "dev.hozy.token-command": {
-      "name": "Hozy Token Command",
-      "description": "Type /token in chat to show your Discord token locally. Only you can see it.",
-      "author": "Hozy <501>",
-      "icon": "KeyIcon",
-      "channels": {
-        "latest": "2.0.3"
-      },
-      "versions": {
-        "1.0.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@1.0.0.zip",
-          "sha256": "a27439442836054fae777364e0df71e3ddf1d276823ff300f5b42a48651c5ad9",
-          "size": 1037,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.0.1": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@1.0.1.zip",
-          "sha256": "6e6bdc3741bbc80781c814ca0d6e438be375274506a894e0c78f03ea1f5b378d",
-          "size": 1802,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.0.2": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@1.0.2.zip",
-          "sha256": "e2e781c081d2178c36055b61a74ac318eeb1aaf65b0052bfa48e1ac3043104a4",
-          "size": 2321,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.0.3": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@1.0.3.zip",
-          "sha256": "1055e8b76a2990f9ce0d286f00e85625b60fdbb207b1e789158f23608ef8d24f",
-          "size": 2461,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "2.0.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@2.0.0.zip",
-          "sha256": "021c729b1de3b709ff61f7deb179205838445816cc2b96a7ab543670a40ff6d1",
-          "size": 2106,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "2.0.1": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@2.0.1.zip",
-          "sha256": "9190c739af077d31991f656622092c70e665f7fdf9a3cb37d79f5b08d65177fb",
-          "size": 2154,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "2.0.2": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@2.0.2.zip",
-          "sha256": "d08d3a5bfc97fc0a0c51191a97299fb53d0e1fdaf4e87d78b549586f86367bba",
-          "size": 2374,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "2.0.3": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@2.0.3.zip",
-          "sha256": "62ff7467373479f3f7d89bf82357c7e98dfb1256424e920193bcde4b6e81603d",
-          "size": 2475,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        }
-      }
-    },
-    "dev.hozy.translator": {
-      "name": "Hozy's Translator",
-      "description": "Translate any message with a single long-press tap. Result appears only to you as an ephemeral message.",
-      "author": "Hozy",
-      "icon": "TranslateIcon",
-      "channels": {
-        "latest": "1.0.0"
-      },
-      "versions": {
-        "1.0.0": {
-          "url": "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.translator@1.0.0.zip",
-          "sha256": "1d7a8768c7bf7586fe26252415cbb0237b86282ec2856613a37c234025435c4b",
-          "size": 5023,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        }
-      }
-    }
-  }
+    "format":  1,
+    "name":  "My Plugin Repository",
+    "description":  "Example plugin repository from the Valenced plugin template.",
+    "plugins":  {
+                    "com.example.always-errors":  {
+                                                      "name":  "Always Errors",
+                                                      "description":  "A plugin that always throws errors.",
+                                                      "author":  "Your Name \u003c643945264868098049\u003e (https://discord.com \"Website\")",
+                                                      "icon":  "CircleErrorIcon",
+                                                      "channels":  {
+                                                                       "latest":  "1.0.0"
+                                                                   },
+                                                      "versions":  {
+                                                                       "1.0.0":  {
+                                                                                     "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.example.always-errors@1.0.0.zip",
+                                                                                     "sha256":  "aaec30836f15911bf55c2c44053374e9d468df2afcc0c81a3d0145ff2f12204a",
+                                                                                     "size":  595,
+                                                                                     "dependencies":  {
+                                                                                                          "valenced.api":  {
+                                                                                                                               "version":  "\u003e=1 \u003c2"
+                                                                                                                           },
+                                                                                                          "discord":  {
+                                                                                                                          "version":  "*"
+                                                                                                                      }
+                                                                                                      }
+                                                                                 }
+                                                                   }
+                                                  },
+                    "com.example.dependent":  {
+                                                  "name":  "Example Dependent",
+                                                  "description":  "Depends on Example Library. Also installs the library.",
+                                                  "author":  "Your Name \u003c643945264868098049\u003e (https://discord.com \"Website\")",
+                                                  "channels":  {
+                                                                   "latest":  "1.0.0"
+                                                               },
+                                                  "versions":  {
+                                                                   "1.0.0":  {
+                                                                                 "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.example.dependent@1.0.0.zip",
+                                                                                 "sha256":  "bdf266f60b57856a4b3018c9763e1ddc15639ccfca1ca898e6970e4114838d76",
+                                                                                 "size":  636,
+                                                                                 "dependencies":  {
+                                                                                                      "valenced.api":  {
+                                                                                                                           "version":  "\u003e=1 \u003c2"
+                                                                                                                       },
+                                                                                                      "discord":  {
+                                                                                                                      "version":  "*"
+                                                                                                                  },
+                                                                                                      "com.example.library":  {
+                                                                                                                                  "version":  "\u003e=1 \u003c2"
+                                                                                                                              }
+                                                                                                  }
+                                                                             }
+                                                               }
+                                              },
+                    "com.example.emojis":  {
+                                               "name":  "Example Emojis",
+                                               "description":  "Example emoji packs for Valenced.",
+                                               "author":  "Your Name",
+                                               "channels":  {
+                                                                "latest":  "1.0.0"
+                                                            },
+                                               "versions":  {
+                                                                "1.0.0":  {
+                                                                              "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.example.emojis@1.0.0.zip",
+                                                                              "sha256":  "b3195176d6bafd4d691d0e3777ff437de53988123e9c6ba9686f91cc552531a3",
+                                                                              "size":  7328,
+                                                                              "dependencies":  {
+                                                                                                   "valenced.api":  {
+                                                                                                                        "version":  "\u003e=1 \u003c2"
+                                                                                                                    },
+                                                                                                   "discord":  {
+                                                                                                                   "version":  "*"
+                                                                                                               },
+                                                                                                   "valenced.api.themes":  {
+                                                                                                                               "version":  "*"
+                                                                                                                           }
+                                                                                               }
+                                                                          }
+                                                            }
+                                           },
+                    "com.example.fonts":  {
+                                              "name":  "Example Fonts",
+                                              "description":  "Example font packs for Valenced.",
+                                              "author":  "Your Name",
+                                              "channels":  {
+                                                               "latest":  "1.0.0"
+                                                           },
+                                              "versions":  {
+                                                               "1.0.0":  {
+                                                                             "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.example.fonts@1.0.0.zip",
+                                                                             "sha256":  "2fdfe20a9eaa30606f8fd1a21dd3b30401b6650d2be5d34683baaab255613a6d",
+                                                                             "size":  2424124,
+                                                                             "dependencies":  {
+                                                                                                  "valenced.api":  {
+                                                                                                                       "version":  "\u003e=1 \u003c2"
+                                                                                                                   },
+                                                                                                  "discord":  {
+                                                                                                                  "version":  "*"
+                                                                                                              },
+                                                                                                  "valenced.api.themes":  {
+                                                                                                                              "version":  "*"
+                                                                                                                          }
+                                                                                              }
+                                                                         }
+                                                           }
+                                          },
+                    "com.example.icons":  {
+                                              "name":  "Example Icons",
+                                              "description":  "Example icon packs for Valenced.",
+                                              "author":  "Your Name",
+                                              "channels":  {
+                                                               "latest":  "1.1.0"
+                                                           },
+                                              "versions":  {
+                                                               "1.1.0":  {
+                                                                             "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.example.icons@1.1.0.zip",
+                                                                             "sha256":  "4b443c9ad15c5a41746e612c15cc70abc9387de329633efdd3a1cdc8672d5781",
+                                                                             "size":  6806,
+                                                                             "dependencies":  {
+                                                                                                  "valenced.api":  {
+                                                                                                                       "version":  "\u003e=1 \u003c2"
+                                                                                                                   },
+                                                                                                  "discord":  {
+                                                                                                                  "version":  "*"
+                                                                                                              },
+                                                                                                  "valenced.api.themes":  {
+                                                                                                                              "version":  "*"
+                                                                                                                          }
+                                                                                              }
+                                                                         }
+                                                           }
+                                          },
+                    "com.example.js-plugin":  {
+                                                  "name":  "JS Plugin",
+                                                  "description":  "A JS-only example plugin without any native code.",
+                                                  "author":  "Your Name \u003c643945264868098049\u003e (https://discord.com \"Website\")",
+                                                  "channels":  {
+                                                                   "latest":  "1.0.0"
+                                                               },
+                                                  "versions":  {
+                                                                   "1.0.0":  {
+                                                                                 "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.example.js-plugin@1.0.0.zip",
+                                                                                 "sha256":  "ea0d58776dee395d1a30f5bbf98d778daa95a8cb224ab470fe6195d0a4fba1d5",
+                                                                                 "size":  607,
+                                                                                 "dependencies":  {
+                                                                                                      "valenced.api":  {
+                                                                                                                           "version":  "\u003e=1 \u003c2"
+                                                                                                                       },
+                                                                                                      "discord":  {
+                                                                                                                      "version":  "*"
+                                                                                                                  }
+                                                                                                  }
+                                                                             }
+                                                               }
+                                              },
+                    "com.example.library":  {
+                                                "name":  "Example Library",
+                                                "description":  "A plugin other plugins can depend on. See Example Dependent.",
+                                                "author":  "Your Name \u003c643945264868098049\u003e (https://discord.com \"Website\")",
+                                                "channels":  {
+                                                                 "latest":  "1.0.0"
+                                                             },
+                                                "versions":  {
+                                                                 "1.0.0":  {
+                                                                               "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.example.library@1.0.0.zip",
+                                                                               "sha256":  "f67417253b8cd3ce708ac2b9a1625cd74b1b1b5e401ce9c5b7fb278f058174f0",
+                                                                               "size":  636,
+                                                                               "dependencies":  {
+                                                                                                    "valenced.api":  {
+                                                                                                                         "version":  "\u003e=1 \u003c2"
+                                                                                                                     },
+                                                                                                    "discord":  {
+                                                                                                                    "version":  "*"
+                                                                                                                }
+                                                                                                }
+                                                                           }
+                                                             }
+                                            },
+                    "com.example.plugin":  {
+                                               "name":  "Example Plugin",
+                                               "description":  "An example Valenced plugin built from the template.",
+                                               "author":  "Your Name \u003c643945264868098049\u003e (https://discord.com \"Website\")",
+                                               "contributors":  [
+                                                                    "Someone Else \u003c669627189624307712\u003e (mailto:support@discord.com)",
+                                                                    "Some Other Person"
+                                                                ],
+                                               "channels":  {
+                                                                "latest":  "1.0.0"
+                                                            },
+                                               "versions":  {
+                                                                "1.0.0":  {
+                                                                              "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.example.plugin@1.0.0.zip",
+                                                                              "sha256":  "ecc953b68449d5182a087fb4cdc5ffd944f9874d9d16a47b8adb2f389b6194c2",
+                                                                              "size":  5743,
+                                                                              "dependencies":  {
+                                                                                                   "valenced.api":  {
+                                                                                                                        "version":  "\u003e=1 \u003c2"
+                                                                                                                    },
+                                                                                                   "discord":  {
+                                                                                                                   "version":  "*"
+                                                                                                               }
+                                                                                               }
+                                                                          }
+                                                            }
+                                           },
+                    "com.example.themes":  {
+                                               "name":  "Example Themes",
+                                               "description":  "Example themes for Valenced.",
+                                               "author":  "Your Name",
+                                               "channels":  {
+                                                                "latest":  "1.0.0"
+                                                            },
+                                               "versions":  {
+                                                                "1.0.0":  {
+                                                                              "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.example.themes@1.0.0.zip",
+                                                                              "sha256":  "148b3e9bdd09554a3b2ee9e64b1b57b74cebe9fcf73657b4cc75028ac9e7b5dd",
+                                                                              "size":  91229,
+                                                                              "dependencies":  {
+                                                                                                   "valenced.api":  {
+                                                                                                                        "version":  "\u003e=1 \u003c2"
+                                                                                                                    },
+                                                                                                   "discord":  {
+                                                                                                                   "version":  "*"
+                                                                                                               },
+                                                                                                   "valenced.api.themes":  {
+                                                                                                                               "version":  "*"
+                                                                                                                           }
+                                                                                               }
+                                                                          }
+                                                            }
+                                           },
+                    "com.hozy.ghost-messages":  {
+                                                    "name":  "Hozy\u0027s Ghost Messages",
+                                                    "description":  "Hozy\u0027s Ghost Messages saves edited and deleted messages locally, even after you restart the app.",
+                                                    "author":  "Hozy",
+                                                    "icon":  "HistoryIcon",
+                                                    "channels":  {
+                                                                     "latest":  "1.2.0"
+                                                                 },
+                                                    "versions":  {
+                                                                     "1.0.0":  {
+                                                                                   "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.ghost-messages@1.0.0.zip",
+                                                                                   "sha256":  "b34ac1fe60ad62212f8f3ea38d175426fb1f5847be7056fc1e4f575e10eb8c95",
+                                                                                   "size":  2903,
+                                                                                   "dependencies":  {
+                                                                                                        "valenced.api":  {
+                                                                                                                             "version":  "\u003e=1 \u003c2"
+                                                                                                                         },
+                                                                                                        "discord":  {
+                                                                                                                        "version":  "*"
+                                                                                                                    }
+                                                                                                    }
+                                                                               },
+                                                                     "1.1.0":  {
+                                                                                   "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.ghost-messages@1.1.0.zip",
+                                                                                   "sha256":  "8dd889d92f0abc9bd5ced58766734caee78135827edc3f4b49772212d22be100",
+                                                                                   "size":  5152,
+                                                                                   "dependencies":  {
+                                                                                                        "valenced.api":  {
+                                                                                                                             "version":  "\u003e=1 \u003c2"
+                                                                                                                         },
+                                                                                                        "discord":  {
+                                                                                                                        "version":  "*"
+                                                                                                                    }
+                                                                                                    }
+                                                                               },
+                                                                     "1.2.0":  {
+                                                                                   "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.ghost-messages@1.2.0.zip",
+                                                                                   "sha256":  "feb8418fac68f3474ffc61427abbd0811710474a90448bc0f579306c140f8b0a",
+                                                                                   "size":  6729,
+                                                                                   "dependencies":  {
+                                                                                                        "valenced.api":  {
+                                                                                                                             "version":  "\u003e=1 \u003c2"
+                                                                                                                         },
+                                                                                                        "discord":  {
+                                                                                                                        "version":  "*"
+                                                                                                                    }
+                                                                                                    }
+                                                                               }
+                                                                 }
+                                                },
+                    "com.hozy.image-ocr":  {
+                                               "name":  "Hozy\u0027s Image OCR",
+                                               "description":  "Hozy\u0027s Image OCR extracts text from any image in Discord with one long-press action and shows the result only to you.",
+                                               "author":  "Hozy",
+                                               "icon":  "TextIcon",
+                                               "channels":  {
+                                                                "latest":  "1.0.3"
+                                                            },
+                                               "versions":  {
+                                                                "1.0.0":  {
+                                                                              "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.image-ocr@1.0.0.zip",
+                                                                              "sha256":  "0748f739bbcddd13d3da3d5037c85b55bebeb663f0f1cca3297784332607d071",
+                                                                              "size":  6557,
+                                                                              "dependencies":  {
+                                                                                                   "valenced.api":  {
+                                                                                                                        "version":  "\u003e=1 \u003c2"
+                                                                                                                    },
+                                                                                                   "discord":  {
+                                                                                                                   "version":  "*"
+                                                                                                               }
+                                                                                               }
+                                                                          },
+                                                                "1.0.1":  {
+                                                                              "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.image-ocr@1.0.1.zip",
+                                                                              "sha256":  "161e8a35e107cfc3b64cc5eab1864acc27757a1ba8cab9c8b59b65c7f30dc835",
+                                                                              "size":  7740,
+                                                                              "dependencies":  {
+                                                                                                   "valenced.api":  {
+                                                                                                                        "version":  "\u003e=1 \u003c2"
+                                                                                                                    },
+                                                                                                   "discord":  {
+                                                                                                                   "version":  "*"
+                                                                                                               }
+                                                                                               }
+                                                                          },
+                                                                "1.0.2":  {
+                                                                              "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.image-ocr@1.0.2.zip",
+                                                                              "sha256":  "6429d893d1b06fcca4e631fbd821248afc092e1b1bba15c0490a7138d3b2cb1e",
+                                                                              "size":  7570,
+                                                                              "dependencies":  {
+                                                                                                   "valenced.api":  {
+                                                                                                                        "version":  "\u003e=1 \u003c2"
+                                                                                                                    },
+                                                                                                   "discord":  {
+                                                                                                                   "version":  "*"
+                                                                                                               }
+                                                                                               }
+                                                                          },
+                                                                "1.0.3":  {
+                                                                              "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.image-ocr@1.0.3.zip",
+                                                                              "sha256":  "9ee312c6bb9892a29598fd0604f097760f9ac130482c8b245ba8309ef86648cd",
+                                                                              "size":  8781,
+                                                                              "dependencies":  {
+                                                                                                   "valenced.api":  {
+                                                                                                                        "version":  "\u003e=1 \u003c2"
+                                                                                                                    },
+                                                                                                   "discord":  {
+                                                                                                                   "version":  "*"
+                                                                                                               }
+                                                                                               }
+                                                                          }
+                                                            }
+                                           },
+                    "com.hozy.translator":  {
+                                                "name":  "Hozy\u0027s Translator",
+                                                "description":  "Hozy\u0027s Translator adds a translate action to Discord message menus and shows the result only to you.",
+                                                "author":  "Hozy",
+                                                "icon":  "TranslateIcon",
+                                                "channels":  {
+                                                                 "latest":  "1.0.2"
+                                                             },
+                                                "versions":  {
+                                                                 "1.0.1":  {
+                                                                               "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.translator@1.0.1.zip",
+                                                                               "sha256":  "42ee41d49d0ccde4b86d0a1c035bf899b08a238e115bd009aca8be0a813a5814",
+                                                                               "size":  6888,
+                                                                               "dependencies":  {
+                                                                                                    "valenced.api":  {
+                                                                                                                         "version":  "\u003e=1 \u003c2"
+                                                                                                                     },
+                                                                                                    "discord":  {
+                                                                                                                    "version":  "*"
+                                                                                                                }
+                                                                                                }
+                                                                           },
+                                                                 "1.0.2":  {
+                                                                               "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.translator@1.0.2.zip",
+                                                                               "sha256":  "cc40cace14fcfcaaf1dd5d059be8026b3f2209ad53e3589ca8d04da039b3ffdc",
+                                                                               "size":  7044,
+                                                                               "dependencies":  {
+                                                                                                    "valenced.api":  {
+                                                                                                                         "version":  "\u003e=1 \u003c2"
+                                                                                                                     },
+                                                                                                    "discord":  {
+                                                                                                                    "version":  "*"
+                                                                                                                }
+                                                                                                }
+                                                                           }
+                                                             }
+                                            },
+                    "com.hozy.voice-transcriber":  {
+                                                       "name":  "Hozy\u0027s Voice Transcriber",
+                                                       "description":  "Hozy\u0027s Voice Transcriber converts Discord voice messages to text with one long-press action and shows the result only to you.",
+                                                       "author":  "Hozy",
+                                                       "icon":  "VoiceIcon",
+                                                       "channels":  {
+                                                                        "latest":  "1.0.3"
+                                                                    },
+                                                       "versions":  {
+                                                                        "1.0.0":  {
+                                                                                      "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.voice-transcriber@1.0.0.zip",
+                                                                                      "sha256":  "4da7dc6ec1c5075f042a3289ef75559f69830da3bf60ca6cbf806ba61358a958",
+                                                                                      "size":  9328,
+                                                                                      "dependencies":  {
+                                                                                                           "valenced.api":  {
+                                                                                                                                "version":  "\u003e=1 \u003c2"
+                                                                                                                            },
+                                                                                                           "discord":  {
+                                                                                                                           "version":  "*"
+                                                                                                                       }
+                                                                                                       }
+                                                                                  },
+                                                                        "1.0.1":  {
+                                                                                      "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.voice-transcriber@1.0.1.zip",
+                                                                                      "sha256":  "ca6196015b50de3e486deb2f258ea1e909fa34d262b8ac88ec4b308108234b84",
+                                                                                      "size":  9300,
+                                                                                      "dependencies":  {
+                                                                                                           "valenced.api":  {
+                                                                                                                                "version":  "\u003e=1 \u003c2"
+                                                                                                                            },
+                                                                                                           "discord":  {
+                                                                                                                           "version":  "*"
+                                                                                                                       }
+                                                                                                       }
+                                                                                  },
+                                                                        "1.0.2":  {
+                                                                                      "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.voice-transcriber@1.0.2.zip",
+                                                                                      "sha256":  "1e7177ca27f1198be4f6b514b9831ae19d67bdee79ac7ae191c19006d92a512f",
+                                                                                      "size":  9647,
+                                                                                      "dependencies":  {
+                                                                                                           "valenced.api":  {
+                                                                                                                                "version":  "\u003e=1 \u003c2"
+                                                                                                                            },
+                                                                                                           "discord":  {
+                                                                                                                           "version":  "*"
+                                                                                                                       }
+                                                                                                       }
+                                                                                  },
+                                                                        "1.0.3":  {
+                                                                                      "url":  "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.voice-transcriber@1.0.3.zip",
+                                                                                      "sha256":  "b633ec471ad6cd955091c356d5208d55b6eb54fc3f79b43b668bca52d2a29a70",
+                                                                                      "size":  9700,
+                                                                                      "dependencies":  {
+                                                                                                           "valenced.api":  {
+                                                                                                                                "version":  "\u003e=1 \u003c2"
+                                                                                                                            },
+                                                                                                           "discord":  {
+                                                                                                                           "version":  "*"
+                                                                                                                       }
+                                                                                                       }
+                                                                                  }
+                                                                    }
+                                                   },
+                    "dev.hozy.token-command":  {
+                                                   "name":  "Hozy Token Command",
+                                                   "description":  "Type /token in chat to show your Discord token locally. Only you can see it.",
+                                                   "author":  "Hozy \u003c501\u003e",
+                                                   "icon":  "KeyIcon",
+                                                   "channels":  {
+                                                                    "latest":  "2.0.3"
+                                                                },
+                                                   "versions":  {
+                                                                    "1.0.0":  {
+                                                                                  "url":  "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@1.0.0.zip",
+                                                                                  "sha256":  "a27439442836054fae777364e0df71e3ddf1d276823ff300f5b42a48651c5ad9",
+                                                                                  "size":  1037,
+                                                                                  "dependencies":  {
+                                                                                                       "valenced.api":  {
+                                                                                                                            "version":  "\u003e=1"
+                                                                                                                        },
+                                                                                                       "discord":  {
+                                                                                                                       "version":  "*"
+                                                                                                                   }
+                                                                                                   }
+                                                                              },
+                                                                    "1.0.1":  {
+                                                                                  "url":  "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@1.0.1.zip",
+                                                                                  "sha256":  "6e6bdc3741bbc80781c814ca0d6e438be375274506a894e0c78f03ea1f5b378d",
+                                                                                  "size":  1802,
+                                                                                  "dependencies":  {
+                                                                                                       "valenced.api":  {
+                                                                                                                            "version":  "\u003e=1"
+                                                                                                                        },
+                                                                                                       "discord":  {
+                                                                                                                       "version":  "*"
+                                                                                                                   }
+                                                                                                   }
+                                                                              },
+                                                                    "1.0.2":  {
+                                                                                  "url":  "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@1.0.2.zip",
+                                                                                  "sha256":  "e2e781c081d2178c36055b61a74ac318eeb1aaf65b0052bfa48e1ac3043104a4",
+                                                                                  "size":  2321,
+                                                                                  "dependencies":  {
+                                                                                                       "valenced.api":  {
+                                                                                                                            "version":  "\u003e=1"
+                                                                                                                        },
+                                                                                                       "discord":  {
+                                                                                                                       "version":  "*"
+                                                                                                                   }
+                                                                                                   }
+                                                                              },
+                                                                    "1.0.3":  {
+                                                                                  "url":  "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@1.0.3.zip",
+                                                                                  "sha256":  "1055e8b76a2990f9ce0d286f00e85625b60fdbb207b1e789158f23608ef8d24f",
+                                                                                  "size":  2461,
+                                                                                  "dependencies":  {
+                                                                                                       "valenced.api":  {
+                                                                                                                            "version":  "\u003e=1"
+                                                                                                                        },
+                                                                                                       "discord":  {
+                                                                                                                       "version":  "*"
+                                                                                                                   }
+                                                                                                   }
+                                                                              },
+                                                                    "2.0.0":  {
+                                                                                  "url":  "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@2.0.0.zip",
+                                                                                  "sha256":  "021c729b1de3b709ff61f7deb179205838445816cc2b96a7ab543670a40ff6d1",
+                                                                                  "size":  2106,
+                                                                                  "dependencies":  {
+                                                                                                       "valenced.api":  {
+                                                                                                                            "version":  "\u003e=1 \u003c2"
+                                                                                                                        },
+                                                                                                       "discord":  {
+                                                                                                                       "version":  "*"
+                                                                                                                   }
+                                                                                                   }
+                                                                              },
+                                                                    "2.0.1":  {
+                                                                                  "url":  "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@2.0.1.zip",
+                                                                                  "sha256":  "9190c739af077d31991f656622092c70e665f7fdf9a3cb37d79f5b08d65177fb",
+                                                                                  "size":  2154,
+                                                                                  "dependencies":  {
+                                                                                                       "valenced.api":  {
+                                                                                                                            "version":  "\u003e=1 \u003c2"
+                                                                                                                        },
+                                                                                                       "discord":  {
+                                                                                                                       "version":  "*"
+                                                                                                                   }
+                                                                                                   }
+                                                                              },
+                                                                    "2.0.2":  {
+                                                                                  "url":  "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@2.0.2.zip",
+                                                                                  "sha256":  "d08d3a5bfc97fc0a0c51191a97299fb53d0e1fdaf4e87d78b549586f86367bba",
+                                                                                  "size":  2374,
+                                                                                  "dependencies":  {
+                                                                                                       "valenced.api":  {
+                                                                                                                            "version":  "\u003e=1 \u003c2"
+                                                                                                                        },
+                                                                                                       "discord":  {
+                                                                                                                       "version":  "*"
+                                                                                                                   }
+                                                                                                   }
+                                                                              },
+                                                                    "2.0.3":  {
+                                                                                  "url":  "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.token-command@2.0.3.zip",
+                                                                                  "sha256":  "62ff7467373479f3f7d89bf82357c7e98dfb1256424e920193bcde4b6e81603d",
+                                                                                  "size":  2475,
+                                                                                  "dependencies":  {
+                                                                                                       "valenced.api":  {
+                                                                                                                            "version":  "\u003e=1 \u003c2"
+                                                                                                                        },
+                                                                                                       "discord":  {
+                                                                                                                       "version":  "*"
+                                                                                                                   }
+                                                                                                   }
+                                                                              }
+                                                                }
+                                               },
+                    "dev.hozy.translator":  {
+                                                "name":  "Hozy\u0027s Translator",
+                                                "description":  "Translate any message with a single long-press tap. Result appears only to you as an ephemeral message.",
+                                                "author":  "Hozy",
+                                                "icon":  "TranslateIcon",
+                                                "channels":  {
+                                                                 "latest":  "1.0.0"
+                                                             },
+                                                "versions":  {
+                                                                 "1.0.0":  {
+                                                                               "url":  "https://hozy-501.github.io/Hozy-plugins/pool/dev.hozy.translator@1.0.0.zip",
+                                                                               "sha256":  "1d7a8768c7bf7586fe26252415cbb0237b86282ec2856613a37c234025435c4b",
+                                                                               "size":  5023,
+                                                                               "dependencies":  {
+                                                                                                    "valenced.api":  {
+                                                                                                                         "version":  "\u003e=1 \u003c2"
+                                                                                                                     },
+                                                                                                    "discord":  {
+                                                                                                                    "version":  "*"
+                                                                                                                }
+                                                                                                }
+                                                                           }
+                                                             }
+                                            }
+                }
 }
