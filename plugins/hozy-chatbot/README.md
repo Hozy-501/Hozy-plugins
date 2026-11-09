@@ -9,11 +9,14 @@ A Valenced plugin for Discord (Android) that answers your questions with one `/a
 ## Features
 
 - **`/ask <question>`** — type it in any chat; your question is **not** sent to the server
+- **Chat panel (in Settings)** — button `Open chat panel` opens a full chat window; **sessions on the right** (20 max, 50 msgs each), closable, survives restarts
+- **Code formatting** — answers render as monospace, copyable blocks; long code stays pretty
+- **Download** — `⬇ Download` copies the active session as **Markdown** for saving/sharing
 - **Any model** — Groq (free), Google Gemini (free via AI Studio), OpenAI, or any OpenAI-compatible endpoint
 - **Reads links** — URLs in your question are fetched (first ~4000 chars) and passed as context
 - **Reads images** — paste an image URL in your question; the model sees it (Gemini / vision models)
-- **Discord markdown** — answers come back as a **normal local message** so *text* / **text** / `code` render natively
-- **Lightweight** — single-shot, no history stored, clean teardown
+- **Discord markdown** — `/ask` answers come back as a **normal local message** so *text* / **text** / `code` render natively
+- **Light & fast** — single-shot `/ask` stays tiny; chat panel is a thin overlay, clean teardown
 
 ---
 
@@ -46,6 +49,7 @@ Go to **Settings → Valenced → Plugins → Hozy's Chatbot → Settings**
 
 | Option | Description |
 |---|---|
+| Chat | **Open chat panel** — talk here; sessions list on the right (20 max); download as Markdown |
 | AI Provider | **Groq** (free, recommended), **Gemini** (free via AI Studio, best with images), **OpenAI**, **Custom** OpenAI-compatible |
 | API Key | Stored locally only. Groq: `console.groq.com`. Gemini: `aistudio.google.com` |
 | Model | Leave empty for the default (`llama-3.3-70b-versatile` / `gemini-2.0-flash` / `gpt-4o-mini`) or type any model name |

@@ -1,8 +1,12 @@
 import { Page } from '@valenced/components'
+import { ToastActionCreators } from '@valenced/discord/actions'
 import { Design } from '@valenced/discord/design'
 import { getJsonStorage, pluginStoragePathFor } from '@valenced/json-storage'
-import { useState } from 'react'
+import { lookupModule } from '@valenced/modules/finders'
+import { withProps } from '@valenced/modules/finders/filters'
+import { useMemo, useState } from 'react'
 import {
+	Modal,
 	ScrollView,
 	StyleSheet,
 	TextInput,
@@ -10,6 +14,7 @@ import {
 	View,
 } from 'react-native'
 import {
+	askLlm,
 	DEFAULT_SYSTEM_PROMPT,
 	getProviderLabel,
 	type LlmProvider,
@@ -50,6 +55,97 @@ export function getSettings(): ChatbotSettings {
 	}
 }
 
+// ---------- Chat sessions (light: 20 sessions × 50 messages) ----------
+
+export interface ChatMessage {
+	role: 'user' | 'assistant'
+	content: string
+	at: number
+}
+
+export interface ChatSession {
+	id: string
+	title: string
+	createdAt: number
+	updatedAt: number
+	messages: ChatMessage[]
+}
+
+const MAX_SESSIONS = 20
+const MAX_MSGS = 50
+
+let sessionsStorage: ReturnType<typeof getJsonStorage<ChatSession[]>> | undefined
+
+export function getSessionsStorage() {
+	if (!sessionsStorage) {
+		sessionsStorage = getJsonStorage<ChatSession[]>(
+			pluginStoragePathFor('com.hozy.chatbot', 'sessions.json'),
+			{ default: [], load: true },
+		)
+	}
+	return sessionsStorage
+}
+
+export function getSessions(): ChatSession[] {
+	const cache = getSessionsStorage().cache as ChatSession[] | undefined
+	return cache ?? []
+}
+
+function newSession(): ChatSession {
+	const at = Date.now()
+	return { id: `s${at}`, title: 'New chat', createdAt: at, updatedAt: at, messages: [] }
+}
+
+function upsertSession(session: ChatSession) {
+	const list = getSessions()
+	const idx = list.findIndex(s => s.id === session.id)
+	const next = idx >= 0 ? [...list] : [session, ...list]
+	if (idx >= 0) next[idx] = session
+	const trimmed = [...next].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, MAX_SESSIONS)
+	void getSessionsStorage().set(trimmed)
+}
+
+function deleteSession(id: string) {
+	const list = getSessions().filter(s => s.id !== id)
+	void getSessionsStorage().set(list)
+}
+
+function showToast(text: string, variant: 'default' | 'success' | 'critical' = 'default') {
+	try {
+		ToastActionCreators.open('hozy-chatbot', { text, variant })
+	} catch {
+		try {
+			ToastActionCreators.open({ key: 'hozy-chatbot', content: text })
+		} catch {}
+	}
+}
+
+function copyToClipboard(text: string): boolean {
+	try {
+		const [clip] = lookupModule(withProps('setString', 'getString'))
+		const api: any = clip as any
+		const setFn =
+			typeof api?.setString === 'function'
+				? api.setString
+				: api?.default && typeof api.default.setString === 'function'
+					? api.default.setString
+					: null
+		if (setFn) {
+			setFn.call(api?.default ?? api, text)
+			return true
+		}
+	} catch {}
+	return false
+}
+
+function formatError(msg: string): string {
+	const m = (msg || '').toLowerCase()
+	if (m.includes('api key') || m.includes('401') || m.includes('403') || m.includes('invalid')) {
+		return 'Invalid or missing API key. Paste it in Settings.'
+	}
+	return (msg || 'Chatbot failed').slice(0, 120)
+}
+
 function TextField({
 	placeholder,
 	value,
@@ -80,10 +176,196 @@ function TextField({
 	)
 }
 
+// ---------- Chat panel (sessions on the right) ----------
+
+function ChatPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+	const sessions = getSessionsStorage().use() ?? []
+	const [activeId, setActiveId] = useState<string | null>(null)
+	const [draft, setDraft] = useState('')
+	const [sending, setSending] = useState(false)
+
+	const active = useMemo(
+		() => sessions.find(s => s.id === activeId) ?? sessions[0] ?? null,
+		[sessions, activeId],
+	)
+
+	const send = async () => {
+		const text = draft.trim()
+		if (!text || sending) return
+		let session = active ?? newSession()
+		setDraft('')
+		setSending(true)
+
+		const userMsg: ChatMessage = { role: 'user', content: text, at: Date.now() }
+		session = {
+			...session,
+			title: session.messages.length === 0 ? text.slice(0, 40) : session.title,
+			updatedAt: Date.now(),
+			messages: [...session.messages, userMsg].slice(-MAX_MSGS),
+		}
+		upsertSession(session)
+		setActiveId(session.id)
+
+		try {
+			const settings = getSettings()
+			const result = await askLlm(settings, text)
+			const assistantMsg: ChatMessage = { role: 'assistant', content: result.text.trim(), at: Date.now() }
+			const latest = getSessions().find(s => s.id === session.id) ?? session
+			upsertSession({
+				...latest,
+				updatedAt: Date.now(),
+				messages: [...latest.messages, assistantMsg].slice(-MAX_MSGS),
+			})
+		} catch (error) {
+			const msg = error instanceof Error ? error.message : 'Chatbot failed'
+			showToast(formatError(msg), 'critical')
+			try {
+				const latest = getSessions().find(s => s.id === session.id) ?? session
+				upsertSession({
+					...latest,
+					updatedAt: Date.now(),
+					messages: [
+						...latest.messages,
+						{ role: 'assistant', content: `Error: ${formatError(msg)}`, at: Date.now() },
+					].slice(-MAX_MSGS),
+				})
+			} catch {}
+		} finally {
+			setSending(false)
+		}
+	}
+
+	const downloadSession = (session: ChatSession) => {
+		const lines: string[] = [
+			`# ${session.title}`,
+			`Exported: ${new Date().toISOString()}`,
+			'',
+		]
+		for (const m of session.messages) {
+			lines.push(m.role === 'user' ? `## You` : `## Hozy's Chatbot`)
+			lines.push('')
+			lines.push(m.content)
+			lines.push('')
+		}
+		const text = lines.join('\n')
+		const ok = copyToClipboard(text)
+		showToast(ok ? 'Session copied as Markdown ✓' : 'Copy failed — select text manually', ok ? 'success' : 'critical')
+	}
+
+	return (
+		<Modal visible={open} animationType="slide" transparent={false} onRequestClose={onClose}>
+			<View style={styles.panel}>
+				<View style={styles.panelHeader}>
+					<TouchableOpacity onPress={onClose} style={styles.headerBtn}>
+						<Design.Text variant="text-md/medium" style={styles.closeTxt}>
+							Close ✕
+						</Design.Text>
+					</TouchableOpacity>
+					<TouchableOpacity
+						style={styles.headerBtn}
+						onPress={() => {
+							const s = newSession()
+							upsertSession(s)
+							setActiveId(s.id)
+						}}
+					>
+						<Design.Text variant="text-md/medium" style={styles.closeTxt}>
+							+ New
+						</Design.Text>
+					</TouchableOpacity>
+					<TouchableOpacity
+						style={styles.headerBtn}
+						onPress={() => active && downloadSession(active)}
+					>
+						<Design.Text variant="text-md/medium" style={styles.closeTxt}>
+							⬇ Download
+						</Design.Text>
+					</TouchableOpacity>
+				</View>
+
+				<View style={styles.panelBody}>
+					<View style={{ flex: 1 }}>
+						<ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
+							{active && active.messages.length > 0 ? (
+								active.messages.map((m, i) => (
+									<View
+										key={`${m.at}-${i}`}
+										style={[styles.msgCard, m.role === 'user' ? styles.msgUser : styles.msgAssistant]}
+									>
+										<Design.Text variant="text-sm/medium" style={styles.msgRole}>
+											{m.role === 'user' ? 'You' : "Hozy's Chatbot"}
+										</Design.Text>
+										<Design.Text variant="text-sm/normal" selectable style={styles.msgBody}>
+											{m.content}
+										</Design.Text>
+									</View>
+								))
+							) : (
+								<Design.Text variant="text-sm/normal" style={styles.emptyTxt}>
+									Start chatting — ask anything (code, errors, ideas…).
+								</Design.Text>
+							)}
+						</ScrollView>
+						<View style={styles.inputRow}>
+							<TextInput
+								value={draft}
+								onChangeText={setDraft}
+								placeholder="Message…"
+								placeholderTextColor="#949ba4"
+								multiline
+								style={styles.chatInput}
+							/>
+							<TouchableOpacity style={styles.sendBtn} onPress={send}>
+								<Design.Text variant="text-md/medium" style={styles.sendTxt}>
+									{sending ? '…' : '➤'}
+								</Design.Text>
+							</TouchableOpacity>
+						</View>
+					</View>
+
+					<View style={styles.side}>
+						<Design.Text variant="text-sm/medium" style={styles.sideTitle}>
+							Sessions
+						</Design.Text>
+						<ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
+							{sessions.map(s => (
+								<View key={s.id}>
+									<TouchableOpacity
+										style={[styles.sessionItem, active?.id === s.id && styles.sessionActive]}
+										onPress={() => setActiveId(s.id)}
+									>
+										<Design.Text variant="text-sm/medium" numberOfLines={1} style={styles.sessionTitle}>
+											{s.title}
+										</Design.Text>
+										<Design.Text variant="text-sm/normal" style={styles.sessionMeta}>
+											{new Date(s.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })} • {s.messages.length} msg
+										</Design.Text>
+									</TouchableOpacity>
+									<TouchableOpacity onPress={() => deleteSession(s.id)}>
+										<Design.Text variant="text-sm/normal" style={styles.deleteTxt}>
+											Delete
+										</Design.Text>
+									</TouchableOpacity>
+								</View>
+							))}
+							{sessions.length === 0 ? (
+								<Design.Text variant="text-sm/normal" style={styles.sessionMeta}>
+									No sessions yet
+								</Design.Text>
+							) : null}
+						</ScrollView>
+					</View>
+				</View>
+			</View>
+		</Modal>
+	)
+}
+
 export function SettingsComponent(_props?: { api?: unknown }) {
 	const storage = getStorage()
 	const s = storage.use() ?? DEFAULT_SETTINGS
 	const [showKey, setShowKey] = useState(false)
+	const [chatOpen, setChatOpen] = useState(false)
 
 	const provider = s.provider ?? DEFAULT_SETTINGS.provider
 	const apiKey = s.apiKey ?? ''
@@ -100,6 +382,15 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 				keyboardShouldPersistTaps="handled"
 				showsVerticalScrollIndicator={true}
 			>
+				<Design.TableRowGroup title="Chat">
+					<Design.TableRow
+						label="Open chat panel"
+						subLabel="Talk here — sessions on the right"
+						arrow
+						onPress={() => setChatOpen(true)}
+					/>
+				</Design.TableRowGroup>
+
 				<Design.TableRowGroup title="AI Provider">
 					<Design.TableRadioGroup
 						value={provider}
@@ -209,6 +500,7 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 					<Design.TableRow label="/ask" subLabel="Local only" />
 				</Design.TableRowGroup>
 			</ScrollView>
+			<ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />
 		</Page>
 	)
 }
@@ -237,4 +529,53 @@ const styles = StyleSheet.create({
 		alignSelf: 'flex-start',
 	},
 	toggleTxt: { color: '#5865f2' },
+	panel: { flex: 1, backgroundColor: '#1e1f22' },
+	panelHeader: {
+		flexDirection: 'row',
+		padding: 12,
+		borderBottomWidth: 1,
+		borderBottomColor: '#2b2d31',
+	},
+	headerBtn: { paddingHorizontal: 12, paddingVertical: 6 },
+	closeTxt: { color: '#5865f2' },
+	panelBody: { flex: 1, flexDirection: 'row' },
+	side: {
+		width: 140,
+		borderLeftWidth: 1,
+		borderLeftColor: '#2b2d31',
+		padding: 8,
+	},
+	sideTitle: { color: '#ffffff', marginBottom: 8 },
+	sessionItem: {
+		backgroundColor: '#2b2d31',
+		borderRadius: 8,
+		padding: 8,
+		marginBottom: 6,
+	},
+	sessionActive: { borderWidth: 1, borderColor: '#5865f2' },
+	sessionTitle: { color: '#ffffff' },
+	sessionMeta: { color: '#949ba4', marginTop: 2 },
+	deleteTxt: { color: '#f23f5e', marginBottom: 8, marginLeft: 4 },
+	msgCard: {
+		margin: 8,
+		padding: 10,
+		borderRadius: 8,
+	},
+	msgUser: { backgroundColor: '#35373c' },
+	msgAssistant: { backgroundColor: '#1e1f22', borderWidth: 1, borderColor: '#2b2d31' },
+	msgRole: { color: '#5865f2', marginBottom: 4 },
+	msgBody: { color: '#dbdee1' },
+	emptyTxt: { color: '#949ba4', padding: 16 },
+	inputRow: { flexDirection: 'row', padding: 8, borderTopWidth: 1, borderTopColor: '#2b2d31' },
+	chatInput: {
+		flex: 1,
+		backgroundColor: '#2b2d31',
+		borderRadius: 8,
+		paddingHorizontal: 12,
+		paddingVertical: 10,
+		color: '#ffffff',
+		fontSize: 14,
+	},
+	sendBtn: { backgroundColor: '#5865f2', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center', marginLeft: 8 },
+	sendTxt: { color: '#ffffff' },
 })
