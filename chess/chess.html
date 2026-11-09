@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chess vs 500 Elo Bot</title>
+<style>
+  :root{
+    --bg:#0f141b; --bg2:#1a2230; --card:#1e293b; --border:#334155;
+    --text:#e2e8f0; --muted:#94a3b8;
+    --light:#eaeed2; --dark:#769656; --dark-hi:#f7ec59; --light-hi:#f6f669;
+    --accent:#22c55e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;background:radial-gradient(1000px 500px at 20% 0%, #1e293b 0%, var(--bg) 60%);color:var(--text);min-height:100vh}
+  header{max-width:1080px;margin:0 auto;padding:18px 16px 6px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  header h1{margin:0;font-size:22px;letter-spacing:.3px}
+  header .sub{color:var(--muted);font-size:13px}
+  .badge{background:var(--bg2);border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:12px;color:var(--text);display:inline-flex;align-items:center;gap:8px}
+  .badge b{font-size:13px}
+  .badge .elo{color:var(--accent);font-weight:700}
+  main{max-width:1080px;margin:14px auto;padding:0 16px 30px;display:grid;grid-template-columns:minmax(0,620px) 340px;gap:18px;align-items:start}
+  @media (max-width:900px){ main{grid-template-columns:1fr} }
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .board-wrap{position:relative}
+  .board{display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);aspect-ratio:1/1;border-radius:10px;overflow:hidden;user-select:none;touch-action:none;border:2px solid #111827}
+  .sq{position:relative;display:flex;align-items:center;justify-content:center;font-size:clamp(28px,7vw,56px);line-height:1;cursor:pointer}
+  .sq.light{background:var(--light)} .sq.dark{background:var(--dark)}
+  .sq .pc{pointer-events:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.45));z-index:2}
+  .sq .pc.w{color:#fff;text-shadow:0 0 3px #111,0 1px 0 #111,0 0 8px rgba(0,0,0,.7)}
+  .sq .pc.b{color:#111;text-shadow:0 1px 0 rgba(255,255,255,.35)}
+  .sq.lastmove{box-shadow:inset 0 0 0 999px rgba(246,246,105,.45)}
+  .sq.selected{box-shadow:inset 0 0 0 999px rgba(34,197,94,.5)}
+  .sq.check{box-shadow:inset 0 0 0 999px rgba(239,68,68,.6)}
+  .sq .dot,.sq .ring{position:absolute;z-index:1;border-radius:50%}
+  .sq .dot{width:26%;height:26%;background:rgba(20,30,20,.28)}
+  .sq .ring{width:88%;height:88%;border:4px solid rgba(20,30,20,.35)}
+  .sq .coord{position:absolute;font-size:10px;font-weight:700;opacity:.9;z-index:1}
+  .sq .coord.f{right:2px;bottom:1px} .sq .coord.r{left:2px;top:1px}
+  .sq.light .coord{color:var(--dark)} .sq.dark .coord{color:var(--light)}
+  .drag-ghost{position:fixed;pointer-events:none;z-index:50;font-size:56px;transform:translate(-50%,-50%);filter:drop-shadow(0 6px 6px rgba(0,0,0,.5))}
+  .topbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  .avatar{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:18px;background:#0f172a;border:1px solid var(--border)}
+  .who{font-size:13px} .who .name{font-weight:700} .who .meta{color:var(--muted);font-size:12px}
+  .dot-live{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block}
+  .dot-live.think{background:#f59e0b;animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .status{background:#0f172a;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;min-height:44px;display:flex;align-items:center;gap:8px}
+  .tray{min-height:28px;font-size:22px;letter-spacing:1px;padding:4px 2px;word-break:break-all}
+  .tray small{font-size:12px;color:var(--accent);font-weight:700}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  button{border:1px solid var(--border);background:#0f172a;color:var(--text);padding:9px 13px;border-radius:10px;cursor:pointer;font-weight:600;font-size:13px}
+  button:hover{border-color:#475569;background:#1e293b} button:disabled{opacity:.45;cursor:not-allowed}
+  button.primary{background:var(--accent);border-color:#15803d;color:#052e16}
+  button.primary:hover{background:#4ade80}
+  select{background:#0f172a;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px 8px}
+  .moves{background:#0f172a;border:1px solid var(--border);border-radius:10px;height:220px;overflow:auto;padding:8px;font-size:14px}
+  .moves table{border-collapse:collapse;width:100%} .moves td{padding:5px 8px;vertical-align:top} .moves td.num{color:var(--muted);width:40px} .moves td.san{width:50%}
+  .moves td.cur{background:#1e293b;border-radius:6px}
+  .muted{color:var(--muted);font-size:12px;line-height:1.5}
+  dialog{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:14px;padding:16px;text-align:center}
+  .promo-row{display:flex;gap:8px;margin-top:10px}
+  .promo-row button{font-size:38px;width:64px;height:64px;padding:0;border-radius:12px}
+  .promo-row button.w{color:#fff;text-shadow:0 0 3px #111} .promo-row button.b{color:#111;text-shadow:0 1px 0 rgba(255,255,255,.4)}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:40}
+  footer{max-width:1080px;margin:0 auto;padding:0 16px 24px;color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>♞ Chess <span class="muted" style="font-weight:400">vs computer</span></h1>
+  <span class="badge"><span class="dot-live" id="liveDot"></span> Bot · <b>500 Elo</b> <span class="elo">● Casual</span></span>
+  <span class="sub">Sees ~2 moves ahead, plays solid openings — then sometimes blunders like a real beginner.</span>
+</header>
+<main>
+  <section class="card">
+    <div class="topbar">
+      <div class="avatar" id="botAvatar">♟</div>
+      <div class="who">
+        <div class="name" id="botName">Bot</div>
+        <div class="meta">500 Elo · <span id="botColorLabel">Black</span> · <span id="botState">waiting…</span></div>
+      </div>
+    </div>
+    <div class="tray" id="trayTop" title="Captured by White"></div>
+    <div class="board-wrap"><div class="board" id="board"></div></div>
+    <div class="tray" id="trayBottom" title="Captured by Black"></div>
+    <div class="status" id="status">Your move.</div>
+    <div class="row">
+      <button class="primary" id="btnNew">● New game</button>
+      <button id="btnUndo">↩ Undo</button>
+      <button id="btnFlip">⇅ Flip board</button>
+      <button id="btnResign">🏳 Resign</button>
+      <label style="font-size:13px">Play as
+        <select id="playAs"><option value="w">White</option><option value="b">Black</option><option value="r">Random</option></select>
+      </label>
+    </div>
+    <p class="muted">Click a piece, or drag it, to move. Dots = legal moves, ring = capture. Full rules: castling, en passant, promotion, check / mate / stalemate / draws.</p>
+  </section>
+  <aside class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <b>Moves</b><span class="muted" id="moveCount">0 · —</span>
+    </div>
+    <div class="moves" id="moves" style="margin-top:8px"><span class="muted">No moves yet.</span></div>
+    <div class="row"><b style="font-size:13px">You</b><span class="muted" id="youInfo">White · —</span></div>
+    <p class="muted" style="margin-top:10px">
+      <b style="color:var(--text)">About this 500 Elo bot:</b><br>
+      Depth-2 search + material / piece-square evaluation, with randomness and occasional blunders.
+      It will win material if you hang pieces, but it misses tactics — exactly the ~500 experience.
+      It does NOT cheat: no engine, no opening book, runs fully offline in this file.
+    </p>
+    <details style="margin-top:8px">
+      <summary class="muted" style="cursor:pointer">How strong is 500?</summary>
+      <p class="muted">Roughly <b>new to chess / still learning moves</b>. Beats total beginners by taking hanging pieces, but loses on tactics and endgames. Perfect for first games.</p>
+    </details>
+  </aside>
+</main>
+<footer>Single-file build · no libraries · double-click <b>chess.html</b> to play. Board: light <b>eaeed2</b> / dark <b>769656</b>.</footer>
+<div id="dragLayer"></div>
+<script>
+"use strict";
+/* ============ CHESS ENGINE (500 Elo bot) ============ */
+const VAL={P:100,N:320,B:330,R:500,Q:900,K:20000};
+const GLYPH={w:{K:"\u2654",Q:"\u2655",R:"\u2656",B:"\u2657",N:"\u2658",P:"\u2659"},b:{K:"\u265A",Q:"\u265B",R:"\u265C",B:"\u265D",N:"\u265E",P:"\u265F"}};
+const PST={
+P:[0,0,0,0,0,0,0,0,50,50,50,50,50,50,50,50,10,10,20,30,30,20,10,10,5,5,10,25,25,10,5,5,0,0,0,20,20,0,0,0,5,-5,-10,0,0,-10,-5,5,5,10,10,-20,-20,10,10,5,0,0,0,0,0,0,0,0],
+N:[-50,-40,-30,-30,-30,-30,-40,-50,-40,-20,0,0,0,0,-20,-40,-30,0,10,15,15,10,0,-30,-30,5,15,20,20,15,5,-30,-30,0,15,20,20,15,0,-30,-30,5,10,15,15,10,5,-30,-40,-20,0,5,5,0,-20,-40,-50,-40,-30,-30,-30,-30,-40,-50],
+B:[-20,-10,-10,-10,-10,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,10,10,5,0,-10,-10,5,5,10,10,5,5,-10,-10,0,10,10,10,10,0,-10,-10,10,10,10,10,10,10,-10,-10,5,0,0,0,0,5,-10,-20,-10,-10,-10,-10,-10,-10,-20],
+R:[0,0,0,0,0,0,0,0,5,10,10,10,10,10,10,5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,0,0,0,5,5,0,0,0],
+Q:[-20,-10,-10,-5,-5,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,5,5,5,0,-10,-5,0,5,5,5,5,0,-5,0,0,5,5,5,5,0,-5,-10,5,5,5,5,5,0,-10,-10,0,5,0,0,0,0,-10,-20,-10,-10,-5,-5,-10,-10,-20],
+K:[-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-20,-30,-30,-40,-40,-30,-30,-20,-10,-20,-20,-20,-20,-20,-20,-10,20,20,0,0,0,0,20,20,20,30,10,0,0,10,30,20]
+};
+const inB=(r,c)=>r>=0&&r<8&&c>=0&&c<8;
+const opp=c=>c==="w"?"b":"w";
+const sqName=(r,c)=>"abcdefgh"[c]+(8-r);
+function initialState(){
+  const b=Array.from({length:8},()=>Array(8).fill(null));
+  const back=["R","N","B","Q","K","B","N","R"];
+  for(let c=0;c<8;c++){b[0][c]={t:back[c],c:"b"};b[1][c]={t:"P",c:"b"};b[6][c]={t:"P",c:"w"};b[7][c]={t:back[c],c:"w"};}
+  return {board:b,turn:"w",castling:{wK:true,wQ:true,bK:true,bQ:true},ep:null,half:0,full:1};
+}
+function cloneState(s){return{board:s.board.map(r=>r.map(p=>p?{...p}:null)),turn:s.turn,castling:{...s.castling},ep:s.ep?{...s.ep}:null,half:s.half,full:s.full};}
+function isAttacked(s,r,c,by){
+  // pawn attacks: white pawn attacks upward (-1), so a white pawn sits at r+1 attacking r
+  const dir=by==="w"?1:-1; for(const dc of[-1,1]){const rr=r+dir,cc=c+dc; if(inB(rr,cc)){const p=s.board[rr][cc]; if(p&&p.c===by&&p.t==="P")return true;}}
+  for(const[dr,dc]of[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]){const rr=r+dr,cc=c+dc;if(inB(rr,cc)){const p=s.board[rr][cc];if(p&&p.c===by&&p.t==="N")return true;}}
+  for(const dr of[-1,0,1])for(const dc of[-1,0,1]){if(!dr&&!dc)continue;const rr=r+dr,cc=c+dc;if(inB(rr,cc)){const p=s.board[rr][cc];if(p&&p.c===by&&p.t==="K")return true;}}
+  for(const[dr,dc]of[[-1,-1],[-1,1],[1,-1],[1,1]]){let rr=r+dr,cc=c+dc;while(inB(rr,cc)){const p=s.board[rr][cc];if(p){if(p.c===by&&(p.t==="B"||p.t==="Q"))return true;break;}rr+=dr;cc+=dc;}}
+  for(const[dr,dc]of[[-1,0],[1,0],[0,-1],[0,1]]){let rr=r+dr,cc=c+dc;while(inB(rr,cc)){const p=s.board[rr][cc];if(p){if(p.c===by&&(p.t==="R"||p.t==="Q"))return true;break;}rr+=dr;cc+=dc;}}
+  return false;
+}
+function findKing(s,color){for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=s.board[r][c];if(p&&p.c===color&&p.t==="K")return{r,c};}return null;}
+function inCheck(s,color){const k=findKing(s,color);return k?isAttacked(s,k.r,k.c,opp(color)):false;}
+function pseudoMoves(s,color){
+  const moves=[];const b=s.board;
+  const add=(fr,fc,tr,tc,extra={})=>{moves.push({from:{r:fr,c:fc},to:{r:tr,c:tc},piece:b[fr][fc].t,captured:b[tr][tc]?.t||null,ep:!!extra.ep,castle:extra.castle||null,promo:extra.promo||null,double:!!extra.double});};
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const p=b[r][c];if(!p||p.c!==color)continue;
+    if(p.t==="P"){
+      const dir=color==="w"?-1:1, start=color==="w"?6:1, promoRow=color==="w"?0:7;
+      const r1=r+dir;
+      if(inB(r1,c)&&!b[r1][c]){ if(r1===promoRow){for(const pr of["Q","R","B","N"])add(r,c,r1,c,{promo:pr});}else add(r,c,r1,c);
+        const r2=r+2*dir; if(r===start&&inB(r2,c)&&!b[r2][c]&&!b[r1][c]) add(r,c,r2,c,{double:true});}
+      for(const dc of[-1,1]){const tr=r+dir,tc=c+dc; if(!inB(tr,tc))continue;
+        if(b[tr][tc]&&b[tr][tc].c!==color){ if(tr===promoRow){for(const pr of["Q","R","B","N"])add(r,c,tr,tc,{promo:pr});}else add(r,c,tr,tc);}
+        else if(s.ep&&s.ep.r===tr&&s.ep.c===tc) add(r,c,tr,tc,{ep:true});}
+    }else if(p.t==="N"){
+      for(const[dr,dc]of[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]){const tr=r+dr,tc=c+dc;if(inB(tr,tc)&&(!b[tr][tc]||b[tr][tc].c!==color))add(r,c,tr,tc);}
+    }else if(p.t==="K"){
+      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const tr=r+dr,tc=c+dc;if(inB(tr,tc)&&(!b[tr][tc]||b[tr][tc].c!==color))add(r,c,tr,tc);}
+      // castling
+      const home=color==="w"?7:0, ek=opp(color);
+      if(r===home&&c===4&&!inCheck(s,color)){
+        const kq=color==="w"?"wK":"bK", qq=color==="w"?"wQ":"bQ";
+        if(s.castling[kq]&&!b[home][5]&&!b[home][6]&&b[home][7]?.c===color&&b[home][7]?.t==="R"&&!isAttacked(s,home,5,ek)&&!isAttacked(s,home,6,ek)) add(r,c,home,6,{castle:"K"});
+        if(s.castling[qq]&&!b[home][3]&&!b[home][2]&&!b[home][1]&&b[home][0]?.c===color&&b[home][0]?.t==="R"&&!isAttacked(s,home,3,ek)&&!isAttacked(s,home,2,ek)) add(r,c,home,2,{castle:"Q"});
+      }
+    }else{
+      const dirs=p.t==="B"?[[-1,-1],[-1,1],[1,-1],[1,1]]:p.t==="R"?[[-1,0],[1,0],[0,-1],[0,1]]:[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+      for(const[dr,dc]of dirs){let tr=r+dr,tc=c+dc;while(inB(tr,tc)){if(!b[tr][tc])add(r,c,tr,tc);else{if(b[tr][tc].c!==color)add(r,c,tr,tc);break;}tr+=dr;tc+=dc;}}
+    }
+  }
+  return moves;
+}
+function applyMove(s,m){
+  const ns=cloneState(s),pc=ns.board[m.from.r][m.from.c],color=pc.c;
+  ns.board[m.to.r][m.to.c]={t:m.promo?m.promo:pc.t,c:color}; ns.board[m.from.r][m.from.c]=null;
+  if(m.ep){ns.board[m.from.r][m.to.c]=null;}
+  if(m.castle==="K"){ns.board[m.to.r][5]=ns.board[m.to.r][7];ns.board[m.to.r][7]=null;}
+  if(m.castle==="Q"){ns.board[m.to.r][3]=ns.board[m.to.r][0];ns.board[m.to.r][0]=null;}
+  // castling rights
+  if(pc.t==="K"){if(color==="w"){ns.castling.wK=false;ns.castling.wQ=false;}else{ns.castling.bK=false;ns.castling.bQ=false;}}
+  if(pc.t==="R"){if(m.from.r===7&&m.from.c===0)ns.castling.wQ=false; if(m.from.r===7&&m.from.c===7)ns.castling.wK=false; if(m.from.r===0&&m.from.c===0)ns.castling.bQ=false; if(m.from.r===0&&m.from.c===7)ns.castling.bK=false;}
+  if(m.to.r===7&&m.to.c===0)ns.castling.wQ=false; if(m.to.r===7&&m.to.c===7)ns.castling.wK=false; if(m.to.r===0&&m.to.c===0)ns.castling.bQ=false; if(m.to.r===0&&m.to.c===7)ns.castling.bK=false;
+  ns.ep=m.double?{r:(m.from.r+m.to.r)/2,c:m.from.c}:null;
+  ns.half=(pc.t==="P"||m.captured||m.ep)?0:s.half+1;
+  if(color==="b")ns.full=s.full+1;
+  ns.turn=opp(color);
+  return ns;
+}
+function legalMoves(s,color){
+  return pseudoMoves(s,color).filter(m=>{const ns=applyMove(s,m);return !inCheck(ns,color);});
+}
+function orderMoves(ms){return ms.sort((a,b)=>{const sa=(a.captured?VAL[a.captured]*10-VAL[a.piece]:0)+(a.promo?900:0),sb=(b.captured?VAL[b.captured]*10-VAL[b.piece]:0)+(b.promo?900:0);return sb-sa;});}
+function evaluate(s){let sc=0;for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=s.board[r][c];if(!p)continue;const v=VAL[p.t]+(p.c==="w"?PST[p.t][r*8+c]:PST[p.t][(7-r)*8+c]);sc+=p.c==="w"?v:-v;}return sc;}
+function evalFor(s,color){const v=evaluate(s);return color==="w"?v:-v;}
+function negamax(s,depth,alpha,beta,ply){
+  const moves=orderMoves(legalMoves(s,s.turn));
+  if(depth===0) return evalFor(s,s.turn);
+  if(moves.length===0) return inCheck(s,s.turn)? -100000+ply : 0;
+  if(s.half>=100) return 0;
+  let best=-Infinity;
+  for(const m of moves){
+    const sc=-negamax(applyMove(s,m),depth-1,-beta,-alpha,ply+1);
+    if(sc>best)best=sc; if(sc>alpha)alpha=sc; if(alpha>=beta)break;
+  }
+  return best;
+}
+function chooseBotMove(s){
+  const moves=orderMoves(legalMoves(s,s.turn));
+  if(moves.length===0)return null;
+  if(moves.length===1)return moves[0];
+  // 500 Elo: occasional full blunder
+  if(Math.random()<0.08) return moves[Math.floor(Math.random()*moves.length)];
+  const scored=moves.map(m=>{let sc=-negamax(applyMove(s,m),1, -Infinity, Infinity,1); sc+=Math.random()*50-25; if(m.captured)sc+=Math.random()*10; return {m,sc};});
+  scored.sort((a,b)=>b.sc-a.sc);
+  const best=scored[0].sc;
+  const cands=scored.filter(x=>best-x.sc<=80);
+  if(Math.random()<0.70) return scored[0].m;
+  return cands[Math.floor(Math.random()*cands.length)].m;
+}
+function toSAN(stateBefore, move, legalBefore){
+  if(move.castle==="K")return finishSAN(stateBefore,move,"O-O");
+  if(move.castle==="Q")return finishSAN(stateBefore,move,"O-O-O");
+  const piece=move.piece, isCap=!!move.captured||!!move.ep;
+  let san="";
+  if(piece==="P"){ if(isCap) san+="abcdefgh"[move.from.c]+"x"; san+=sqName(move.to.r,move.to.c); if(move.promo)san+="="+move.promo; }
+  else{
+    san+=piece;
+    const others=legalBefore.filter(x=>x.piece===piece&&x.to.r===move.to.r&&x.to.c===move.to.c&&!(x.from.r===move.from.r&&x.from.c===move.from.c));
+    if(others.length){ const sameFile=others.some(x=>x.from.c===move.from.c), sameRank=others.some(x=>x.from.r===move.from.r);
+      if(!sameFile) san+="abcdefgh"[move.from.c]; else if(!sameRank) san+=(8-move.from.r); else san+=sqName(move.from.r,move.from.c); }
+    if(isCap)san+="x"; san+=sqName(move.to.r,move.to.c);
+  }
+  return finishSAN(stateBefore,move,san);
+}
+function finishSAN(stateBefore,move,base){const ns=applyMove(stateBefore,move); const oppM=legalMoves(ns,ns.turn); if(oppM.length===0&&inCheck(ns,ns.turn))return base+"#"; if(inCheck(ns,ns.turn))return base+"+"; return base;}
+function posKey(s){let k="";for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=s.board[r][c];k+=p?p.c+p.t:".." ;}k+=s.turn+JSON.stringify(s.castling)+(s.ep?s.ep.r+","+s.ep.c:"-");return k;}
+function insufficientMaterial(s){const pieces=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=s.board[r][c];if(p&&p.t!=="K")pieces.push(p);} if(pieces.length===0)return true; if(pieces.length===1&&(pieces[0].t==="B"||pieces[0].t==="N"))return true; return false;}
+
+/* ============ UI / GAME ============ */
+const boardEl=document.getElementById("board"), statusEl=document.getElementById("status"), movesEl=document.getElementById("moves"), moveCountEl=document.getElementById("moveCount");
+const trayTop=document.getElementById("trayTop"), trayBottom=document.getElementById("trayBottom");
+const botState=document.getElementById("botState"), liveDot=document.getElementById("liveDot"), youInfo=document.getElementById("youInfo");
+const botColorLabel=document.getElementById("botColorLabel");
+let state=initialState(), stack=[initialState()], sans=[], lastMove=null, selected=null, legalCache=[], gameOver=false, playerColor="w", flip=false, botThinking=false, gameId=0, posCounts=new Map(), pendingPromo=null, drag=null;
+posCounts.set(posKey(state),1);
+const isBotTurn=()=>state.turn!==playerColor;
+
+function audioCtx(){return window._ac||(window._ac=new (window.AudioContext||window.webkitAudioContext)());}
+function beep(freq=520,dur=0.07,type="sine",vol=0.08){try{const ac=audioCtx(),o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=freq;g.gain.value=vol;o.connect(g);g.connect(ac.destination);o.start();g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+dur);o.stop(ac.currentTime+dur);}catch(e){}}
+function playSound(move){ if(move.captured||move.ep)beep(240,0.12,"square",0.06); else if(move.castle)beep(380,0.1,"sine",0.07); else beep(520,0.06,"sine",0.06); if(inCheck(state,state.turn))beep(740,0.15,"sine",0.06); }
+
+function displayRanks(){return flip?[7,6,5,4,3,2,1,0]:[0,1,2,3,4,5,6,7];}
+function displayFiles(){return flip?[7,6,5,4,3,2,1,0]:[0,1,2,3,4,5,6,7];}
+
+function render(){
+  boardEl.innerHTML="";
+  const rs=displayRanks(), cs=displayFiles();
+  const legalTargets=selected?legalCache.filter(m=>m.from.r===selected.r&&m.from.c===selected.c):[];
+  const checkSq=inCheck(state,state.turn)?findKing(state,state.turn):null;
+  for(const r of rs) for(const c of cs){
+    const sq=document.createElement("div"); sq.className="sq "+(((r+c)%2===0)?"light":"dark"); sq.dataset.r=r; sq.dataset.c=c;
+    if(lastMove&&((lastMove.from.r===r&&lastMove.from.c===c)||(lastMove.to.r===r&&lastMove.to.c===c)))sq.classList.add("lastmove");
+    if(selected&&selected.r===r&&selected.c===c)sq.classList.add("selected");
+    if(checkSq&&checkSq.r===r&&checkSq.c===c)sq.classList.add("check");
+    if(r===rs[7]){const co=document.createElement("span");co.className="coord f";co.textContent="abcdefgh"[c];sq.appendChild(co);}
+    if(c===cs[0]){const co=document.createElement("span");co.className="coord r";co.textContent=8-r;sq.appendChild(co);}
+    const tgt=legalTargets.find(m=>m.to.r===r&&m.to.c===c);
+    if(tgt){const d=document.createElement("span");d.className=tgt.captured||tgt.ep?"ring":"dot";sq.appendChild(d);}
+    const p=state.board[r][c];
+    if(p){const span=document.createElement("span");span.className="pc "+p.c;span.textContent=GLYPH[p.c][p.t];span.dataset.r=r;span.dataset.c=c;sq.appendChild(span);}
+    boardEl.appendChild(sq);
+  }
+  renderSide();
+}
+function capturedAndMaterial(){
+  const start={P:8,N:2,B:2,R:2,Q:1};
+  const missW={}, missB={P:0,N:0,B:0,R:0,Q:0};
+  const cur={w:{P:0,N:0,B:0,R:0,Q:0},b:{P:0,N:0,B:0,R:0,Q:0}};
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=state.board[r][c];if(p&&p.t!=="K")cur[p.c][p.t]++;}
+  // Note: promotions make simple diff imperfect; compute missing directly (captured counts capped by start - current, min 0 for underpromotion tolerance)
+  for(const t of["P","N","B","R","Q"]){ missW[t]=Math.max(0,start[t]-cur.w[t]); missB[t]=Math.max(0,start[t]-cur.b[t]); }
+  const order=["Q","R","B","N","P"];
+  const matW=Object.keys(start).reduce((a,t)=>a+cur.w[t]*VAL[t],0), matB=Object.keys(start).reduce((a,t)=>a+cur.b[t]*VAL[t],0);
+  const diff=Math.round((matW-matB)/100);
+  const blackCapturedWhite=order.map(t=>GLYPH.w[t].repeat(missW[t])).join(""); // white pieces lost -> shown in Black's tray
+  const whiteCapturedBlack=order.map(t=>GLYPH.b[t].repeat(missB[t])).join(""); // black pieces lost -> shown in White's tray
+  // Tray next to a player shows pieces that player has captured
+  const topIsWhite = flip; // when flip, row 7 (white back rank) is on top
+  const topPieces=topIsWhite?whiteCapturedBlack:blackCapturedWhite;
+  const bottomPieces=topIsWhite?blackCapturedWhite:whiteCapturedBlack;
+  const topDiff=topIsWhite?diff:-diff, bottomDiff=topIsWhite?-diff:diff;
+  trayTop.innerHTML=(topPieces||"")+(topDiff>0?` <small>+${topDiff}</small>`:"")||"<span class='muted' style='font-size:12px'>—</span>";
+  trayBottom.innerHTML=(bottomPieces||"")+(bottomDiff>0?` <small>+${bottomDiff}</small>`:"")||"<span class='muted' style='font-size:12px'>—</span>";
+  return diff;
+}
+function renderSide(){
+  const diff=capturedAndMaterial();
+  botColorLabel.textContent=opp(playerColor)==="w"?"White":"Black";
+  document.getElementById("botName").textContent="Bot (500 Elo)";
+  youInfo.textContent=(playerColor==="w"?"White":"Black")+" · "+(state.turn==="w"?"White to move":"Black to move");
+  moveCountEl.textContent=(sans.length)+" · "+(state.turn==="w"?"White to move":"Black to move");
+  // moves table
+  if(!sans.length){movesEl.innerHTML="<span class='muted'>No moves yet.</span>";}
+  else{
+    let html="<table>"; for(let i=0;i<sans.length;i+=2){html+=`<tr><td class="num">${i/2+1}.</td><td class="san">${sans[i]}</td><td class="san">${sans[i+1]||""}</td></tr>`;} html+="</table>";
+    movesEl.innerHTML=html; movesEl.scrollTop=movesEl.scrollHeight;
+  }
+  document.getElementById("btnUndo").disabled=!sans.length||botThinking;
+  document.getElementById("btnResign").disabled=gameOver||!sans.length&&false;
+  liveDot.className="dot-live"+(botThinking?" think":"");
+}
+function setStatus(msg){statusEl.innerHTML=msg;}
+function updateGameOver(){
+  const ms=legalMoves(state,state.turn);
+  if(ms.length===0){
+    if(inCheck(state,state.turn)){ gameOver=true; const winner=state.turn==="w"?"Black":"White"; const youWin=(state.turn==="w"?"b":"w")===playerColor; setStatus(youWin?"🏆 <b>Checkmate — you win!</b>":"🏆 <b>Checkmate — Bot wins.</b>  Try Play again and take your time."); }
+    else{ gameOver=true; setStatus("🤝 <b>Stalemate — Draw.</b>"); }
+    return true;
+  }
+  if(state.half>=100){gameOver=true;setStatus("🤝 <b>Draw — 50-move rule.</b>");return true;}
+  if(insufficientMaterial(state)){gameOver=true;setStatus("🤝 <b>Draw — insufficient material.</b>");return true;}
+  if((posCounts.get(posKey(state))||0)>=3){gameOver=true;setStatus("🤝 <b>Draw — threefold repetition.</b>");return true;}
+  return false;
+}
+function doMove(move, byBot=false){
+  const legalBefore=legalMoves(state,state.turn);
+  const san=toSAN(state,move,legalBefore);
+  state=applyMove(state,move); stack.push(state); sans.push(san); lastMove=move;
+  const key=posKey(state); posCounts.set(key,(posCounts.get(key)||0)+1);
+  selected=null; legalCache=[];
+  playSound(move);
+  if(!updateGameOver()){
+    if(state.turn!==playerColor && !gameOver){ setStatus((byBot?"Bot moved <b>"+san+"</b>. Your turn.":"Your move.")); }
+    else if(byBot){ setStatus("Bot played <b>"+san+"</b> — your turn."); }
+    else setStatus("Bot is thinking… <span class='muted'>500 Elo</span>");
+  }
+  render();
+  if(state.turn!==playerColor && !gameOver && !botThinking) triggerBot();
+}
+function triggerBot(){
+  if(botThinking||gameOver)return;
+  botThinking=true; renderSide(); botState.textContent="thinking…";
+  const id=gameId;
+  setTimeout(()=>{
+    if(id!==gameId)return;
+    const m=chooseBotMove(state);
+    botThinking=false; botState.textContent="ready";
+    if(!m)return;
+    // doMove will render; suppress its bot trigger recursion by clearing before call
+    doMove(m,true);
+  }, 420+Math.random()*350);
+}
+
+/* pointer: click + drag */
+function sqFromPoint(x,y){ const el=document.elementFromPoint(x,y); const sq=el&&el.closest?el.closest(".sq"):el&&el.parentElement&&el.parentElement.closest?el.parentElement.closest(".sq"):null; return sq?{r:+sq.dataset.r,c:+sq.dataset.c}:null; }
+function legalFrom(r,c){ if(!legalCache.length) legalCache=legalMoves(state,playerColor); return legalCache.filter(m=>m.from.r===r&&m.from.c===c); }
+function tryMove(from,to){
+  const opts=legalFrom(from.r,from.c).filter(m=>m.to.r===to.r&&m.to.c===to.c);
+  if(!opts.length){selected=null;render();return false;}
+  if(opts.some(m=>m.promo)){ pendingPromo={from,to,opts}; showPromo(playerColor); return true; }
+  doMove(opts[0],false); return true;
+}
+boardEl.addEventListener("pointerdown",e=>{
+  if(gameOver||botThinking||isBotTurn())return;
+  const sq=sqFromPoint(e.clientX,e.clientY); if(!sq)return;
+  const p=state.board[sq.r][sq.c];
+  // if selected and clicking a legal target -> move
+  if(selected){ const opts=legalFrom(selected.r,selected.c).filter(m=>m.to.r===sq.r&&m.to.c===sq.c); if(opts.length){tryMove(selected,sq);return;} }
+  if(p&&p.c===playerColor){ selected={r:sq.r,c:sq.c}; legalCache=legalMoves(state,playerColor); render();
+    drag={from:{r:sq.r,c:sq.c},ghost:null}; startGhost(e,p);
+  } else { selected=null; render(); }
+});
+function startGhost(e,p){
+  const g=document.createElement("div"); g.className="drag-ghost pc "+p.c; g.textContent=GLYPH[p.c][p.t]; g.style.left=e.clientX+"px"; g.style.top=e.clientY+"px"; document.getElementById("dragLayer").appendChild(g); drag.ghost=g;
+}
+window.addEventListener("pointermove",e=>{ if(drag&&drag.ghost){drag.ghost.style.left=e.clientX+"px";drag.ghost.style.top=e.clientY+"px";} });
+window.addEventListener("pointerup",e=>{
+  if(!drag)return;
+  const from=drag.from; if(drag.ghost)drag.ghost.remove(); drag=null;
+  const to=sqFromPoint(e.clientX,e.clientY);
+  if(to&&(to.r!==from.r||to.c!==from.c)){ const ok=tryMove(from,to); if(!ok)render(); }
+  else render();
+});
+/* promotion dialog */
+function showPromo(color){
+  const bg=document.createElement("div"); bg.className="modal-bg"; bg.id="promoBg";
+  const dlg=document.createElement("dialog"); dlg.open=true;
+  dlg.innerHTML=`<b>Promote pawn to</b><div class="promo-row">${["Q","R","B","N"].map(t=>`<button class="${color}" data-t="${t}" title="${t}">${GLYPH[color][t]}</button>`).join("")}</div>`;
+  bg.appendChild(dlg); document.body.appendChild(bg);
+  dlg.querySelectorAll("button").forEach(b=>b.onclick=()=>{const t=b.dataset.t; bg.remove(); const mv=pendingPromo.opts.find(m=>m.promo===t); pendingPromo=null; doMove(mv,false);});
+}
+document.getElementById("btnNew").onclick=newGame;
+document.getElementById("playAs").onchange=e=>{playerColor=e.target.value;newGame(true);};
+document.getElementById("btnFlip").onclick=()=>{flip=!flip;render();};
+document.getElementById("btnUndo").onclick=()=>{
+  if(botThinking||!sans.length)return;
+  gameId++;
+  // pop until it's player's turn to move at start of a "player turn" block (pop 2 when enough)
+  let n=1;
+  if(sans.length>=2 && state.turn===playerColor) n=2; // undo bot + player
+  else n=1;
+  for(let i=0;i<n;i++){ stack.pop(); sans.pop(); }
+  state=stack[stack.length-1];
+  lastMove=sans.length? (null):null; // lastmove highlight recomputed? clear is fine
+  gameOver=false; selected=null;
+  // rebuild posCounts
+  posCounts=new Map(); let s=initialState(); posCounts.set(posKey(s),1);
+  // replay to rebuild counts accurately
+  let cur=initialState();
+  for(let i=0;i<stack.length-1;i++){ /* stack holds states after each move, already have keys */ }
+  for(const st of stack){ /* recount */ }
+  posCounts=new Map(); for(const st of stack){const k=posKey(st); posCounts.set(k,(posCounts.get(k)||0)+1);}
+  // fix lastMove from stack diff: just clear highlight
+  lastMove=null;
+  setStatus("Undone. Your move.");
+  render();
+  if(state.turn!==playerColor && !gameOver) triggerBot();
+};
+document.getElementById("btnResign").onclick=()=>{ if(gameOver)return; gameOver=true; setStatus("🏳 <b>You resigned. Bot wins.</b>"); render(); };
+
+function newGame(keepSelection=false){
+  gameId++; botThinking=false;
+  const sel=keepSelection?document.getElementById("playAs").value:(document.getElementById("playAs").value);
+  playerColor=sel==="r"?(Math.random()<0.5?"w":"b"):sel;
+  flip=playerColor==="b";
+  state=initialState(); stack=[state]; sans=[]; lastMove=null; selected=null; legalCache=[]; gameOver=false; pendingPromo=null;
+  posCounts=new Map(); posCounts.set(posKey(state),1);
+  botState.textContent="ready";
+  setStatus(playerColor==="w"?"Your move. <span class='muted'>You are White.</span>":"Bot moves first. <span class='muted'>You are Black — good luck!</span>");
+  render();
+  if(state.turn!==playerColor) triggerBot();
+}
+// initial
+playerColor="w"; flip=false;
+render(); setStatus("Your move. <span class='muted'>You are White — 500 Elo Bot is Black.</span>");
+</script>
+</body>
+</html>
