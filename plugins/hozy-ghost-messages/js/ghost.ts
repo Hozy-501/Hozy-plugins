@@ -135,6 +135,10 @@ export function trackEdit(
 		const data = getGhostData()
 		const prev = data.recent[id]
 		const at = Date.now()
+		const resolvedChannel = channelId || prev?.channelId || ''
+		const resolvedScope = extra?.scope && extra.scope !== 'unknown' ? extra.scope : prev?.scope
+		const resolvedGuildId = extra?.guildId ?? prev?.guildId
+		const resolvedGuildName = extra?.guildName ?? prev?.guildName
 		if (!prev) {
 			// Message seen before tracking started (or cache miss) — still log it
 			// so the new content isn't lost for deletes/edits after reloads.
@@ -143,7 +147,7 @@ export function trackEdit(
 			const entry: GhostEntry = {
 				key: `${id}:${at}:edit`,
 				id,
-				channelId,
+				channelId: resolvedChannel,
 				author: 'Unknown (before tracking)',
 				type: 'edit',
 				oldContent: '(original not tracked)',
@@ -152,9 +156,9 @@ export function trackEdit(
 				hasLink: extra?.hasLink ?? hasLinkIn(newContent),
 				isVoice: extra?.isVoice,
 				favorite: false,
-				scope: extra?.scope,
-				guildId: extra?.guildId,
-				guildName: extra?.guildName,
+				scope: resolvedScope,
+				guildId: resolvedGuildId,
+				guildName: resolvedGuildName,
 				at,
 			}
 			const log = [entry, ...data.log].slice(0, MAX_LOG)
@@ -162,15 +166,15 @@ export function trackEdit(
 				...data.recent,
 				[id]: {
 					id,
-					channelId,
+					channelId: resolvedChannel,
 					author: entry.author,
 					content: newContent,
 					attachments,
 					hasLink: entry.hasLink,
 					isVoice: entry.isVoice,
-					scope: extra?.scope,
-					guildId: extra?.guildId,
-					guildName: extra?.guildName,
+					scope: resolvedScope,
+					guildId: resolvedGuildId,
+					guildName: resolvedGuildName,
 					at,
 				} as RecentMessage,
 			}
@@ -187,7 +191,7 @@ export function trackEdit(
 		const entry: GhostEntry = {
 			key: `${id}:${at}:edit`,
 			id,
-			channelId,
+			channelId: resolvedChannel,
 			author: prev.author,
 			displayName: prev.displayName,
 			authorId: prev.authorId,
@@ -198,9 +202,9 @@ export function trackEdit(
 			hasLink: prev.hasLink,
 			isVoice: prev.isVoice,
 			favorite: false,
-			scope: extra?.scope ?? prev.scope,
-			guildId: extra?.guildId ?? prev.guildId,
-			guildName: extra?.guildName ?? prev.guildName,
+			scope: resolvedScope,
+			guildId: resolvedGuildId,
+			guildName: resolvedGuildName,
 			at,
 		}
 		const log = [entry, ...data.log].slice(0, MAX_LOG)
@@ -208,10 +212,14 @@ export function trackEdit(
 			...data.recent,
 			[id]: {
 				...prev,
+				channelId: resolvedChannel,
 				content: newContent,
 				attachments: newAttachments,
 				hasLink: newHasLink,
 				isVoice: newIsVoice,
+				scope: resolvedScope,
+				guildId: resolvedGuildId,
+				guildName: resolvedGuildName,
 				at,
 			},
 		}
@@ -232,7 +240,7 @@ export function trackDelete(id: string, channelId: string): GhostEntry | undefin
 		const entry: GhostEntry = {
 			key: `${id}:${at}:delete`,
 			id,
-			channelId,
+			channelId: channelId || prev.channelId,
 			author: prev.author,
 			displayName: prev.displayName,
 			authorId: prev.authorId,
@@ -296,6 +304,13 @@ function mediaText(
 	return attachments.map(a => `${a.voice ? '🎤' : '📎'} ${a.filename}`).join(', ')
 }
 
+function locationLabel(entry: GhostEntry): string {
+	if (entry.scope === 'server') return `🏢 ${entry.guildName ?? entry.guildId ?? 'Server'}`
+	if (entry.scope === 'group') return '💬 Group DM'
+	if (entry.scope === 'dm') return '💬 DM'
+	return '❓ Unknown'
+}
+
 export function exportGhosts(format: ExportFormat): string {
 	const data = getGhostData()
 	const log = [...data.log].sort((a, b) => (a.at ?? 0) - (b.at ?? 0))
@@ -315,7 +330,7 @@ export function exportGhosts(format: ExportFormat): string {
 		]
 		for (const e of log) {
 			const author = e.displayName ? `${e.displayName} (@${e.author})` : `@${e.author}`
-			const loc = e.scope === 'server' ? `🏢 ${e.guildName ?? e.guildId ?? 'Server'}` : '💬 DM'
+			const loc = locationLabel(e)
 			lines.push(`## ${e.type === 'delete' ? '🗑 Deleted' : '✏️ Edited'} — ${author} • ${loc}`)
 			lines.push(`- Date: ${formatDateTime(e.at)} • Msg: ${e.id} • Channel: ${e.channelId || '-'}`)
 			if (mediaText(e.attachments, e.isVoice))
@@ -335,8 +350,9 @@ export function exportGhosts(format: ExportFormat): string {
 	]
 	for (const e of log) {
 		const author = e.displayName ? `${e.displayName} (@${e.author})` : `@${e.author}`
-		const loc = e.scope === 'server' ? `🏢 ${e.guildName ?? e.guildId ?? 'Server'}` : '💬 DM'
-		lines.push(`[${formatDateTime(e.at)}] [${e.type.toUpperCase()}] ${author} • ${loc}`)
+		lines.push(
+			`[${formatDateTime(e.at)}] [${e.type.toUpperCase()}] ${author} • ${locationLabel(e)}`,
+		)
 		lines.push(`  Msg: ${e.id}  Channel: ${e.channelId || '-'}`)
 		if (mediaText(e.attachments, e.isVoice)) lines.push(`  Media: ${mediaText(e.attachments, e.isVoice)}`)
 		lines.push(`  Old: ${e.oldContent || '(media only)'}`)

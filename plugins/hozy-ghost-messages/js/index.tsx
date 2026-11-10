@@ -127,45 +127,6 @@ function extractGuildId(msg: any): string | undefined {
 	return firstString(msg?.guild_id, msg?.guildId, msg?.guild?.id)
 }
 
-function resolveScope(
-	channelId: string,
-	guildId: string | undefined,
-	msg: any,
-): { scope: 'server' | 'dm' | 'group' | 'unknown'; guildId?: string; guildName?: string } {
-	// Fast path: guild_id present => server.
-	if (guildId) {
-		let guildName: string | undefined
-		try {
-			const [found] = lookupModule(withProps('getGuild'))
-			const store: AnyRecord = asStore(found)
-			const guild = store?.getGuild?.(guildId)
-			guildName = guild?.name ?? guild?.acronym
-		} catch {}
-		return { scope: 'server', guildId, guildName }
-	}
-	// Channel lookup fallback for DM/group distinction
-	try {
-		const [found] = lookupModule(withProps('getChannel'))
-		const store: AnyRecord = asStore(found)
-		const channel = channelId ? store?.getChannel?.(channelId) : undefined
-		const type = channel?.type
-		if (type === 3) return { scope: 'group' }
-		if (type === 1) return { scope: 'dm' }
-		// Guild text/channel without guild_id on the message object
-		const cid = channel?.guild_id ?? channel?.guildId
-		if (cid) {
-			let guildName: string | undefined
-			try {
-				const [g] = lookupModule(withProps('getGuild'))
-				guildName = (asStore(g)?.getGuild?.(cid as string) as any)?.name
-			} catch {}
-			return { scope: 'server', guildId: cid as string, guildName }
-		}
-	} catch {}
-	// No guild_id and no channel info => assume DM (covers user DMs + group fallback)
-	return { scope: 'dm' }
-}
-
 function asStore(value: unknown): AnyRecord | undefined {
 	if (!value || typeof value !== 'object') return undefined
 	const rec = value as AnyRecord
@@ -173,6 +134,63 @@ function asStore(value: unknown): AnyRecord | undefined {
 	const dflt = rec.default
 	if (dflt && typeof dflt === 'object') return dflt as AnyRecord
 	return rec
+}
+
+// Cache stores + guild names: resolveScope runs on every message event, so we
+// avoid re-scanning Metro modules and re-looking-up the same guild repeatedly.
+let channelStoreCache: AnyRecord | undefined
+let guildStoreCache: AnyRecord | undefined
+const guildNameCache = new Map<string, string | undefined>()
+
+function getChannelStore(): AnyRecord | undefined {
+	if (channelStoreCache) return channelStoreCache
+	try {
+		const [found] = lookupModule(withProps('getChannel'))
+		channelStoreCache = asStore(found)
+	} catch {}
+	return channelStoreCache
+}
+
+function getGuildStore(): AnyRecord | undefined {
+	if (guildStoreCache) return guildStoreCache
+	try {
+		const [found] = lookupModule(withProps('getGuild'))
+		guildStoreCache = asStore(found)
+	} catch {}
+	return guildStoreCache
+}
+
+function guildNameOf(guildId: string): string | undefined {
+	if (guildNameCache.has(guildId)) return guildNameCache.get(guildId)
+	let name: string | undefined
+	try {
+		const guild = getGuildStore()?.getGuild?.(guildId)
+		name = guild?.name ?? guild?.acronym
+	} catch {}
+	// Only cache hits: a miss can happen before stores finish loading.
+	if (name) guildNameCache.set(guildId, name)
+	return name
+}
+
+function resolveScope(
+	channelId: string,
+	guildId: string | undefined,
+): { scope: 'server' | 'dm' | 'group' | 'unknown'; guildId?: string; guildName?: string } {
+	// Fast path: guild_id is present on the gateway payload => server.
+	if (guildId) return { scope: 'server', guildId, guildName: guildNameOf(guildId) }
+	// Fallback: ChannelStore tells us if the channel is a DM (1), group DM (3)
+	// or a guild channel (guild_id on the channel object).
+	try {
+		const channel = channelId ? getChannelStore()?.getChannel?.(channelId) : undefined
+		const type = channel?.type
+		if (type === 1) return { scope: 'dm' }
+		if (type === 3) return { scope: 'group' }
+		const cid = firstString(channel?.guild_id, channel?.guildId)
+		if (cid) return { scope: 'server', guildId: cid, guildName: guildNameOf(cid) }
+		if (typeof type === 'number') return { scope: 'server' }
+	} catch {}
+	// Channel not cached yet — never guess DM for a server message.
+	return { scope: 'unknown' }
 }
 
 function handleAction(action: any) {
@@ -192,7 +210,7 @@ function handleAction(action: any) {
 		const author = extractAuthor(msg)
 		const isVoice = attachments.some(a => a.voice)
 		const channelId = channelIdOf(action)
-		const scopeInfo = resolveScope(channelId, extractGuildId(msg), msg)
+		const scopeInfo = resolveScope(channelId, extractGuildId(msg))
 		trackCreate({
 			id,
 			channelId,
@@ -221,7 +239,7 @@ function handleAction(action: any) {
 		// A delete/edit that only changes media (voice/image) still counts
 		if (!newContent && attachments.length === 0) return
 		const channelId = channelIdOf(action)
-		const scopeInfo = resolveScope(channelId, extractGuildId(msg), msg)
+		const scopeInfo = resolveScope(channelId, extractGuildId(msg))
 		const entry = trackEdit(id, newContent, channelId, {
 			attachments: attachments.length ? attachments : undefined,
 			hasLink: hasLinkIn(newContent),

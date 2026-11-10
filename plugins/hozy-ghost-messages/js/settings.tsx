@@ -159,7 +159,8 @@ function locationText(entry: GhostEntry): string {
 		return entry.guildName ? `🏢 ${entry.guildName}` : `🏢 Server ${entry.guildId?.slice(0, 6) ?? ''}`
 	}
 	if (entry.scope === 'group') return '💬 Group DM'
-	if (entry.scope === 'dm' || entry.scope === 'unknown') return '💬 DM'
+	if (entry.scope === 'dm') return '💬 DM'
+	if (entry.scope === 'unknown') return '❓ Unknown'
 	return ''
 }
 
@@ -169,7 +170,7 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 	const ghostData = getGhostStorage().use() ?? { recent: {}, log: [] }
 	const [search, setSearch] = useState('')
 	const [filters, setFilters] = useState<Set<FilterId>>(new Set())
-	const [expanded, setExpanded] = useState<string | null>(null)
+	const [expanded, setExpanded] = useState<Set<string>>(new Set())
 	const [importOpen, setImportOpen] = useState(false)
 	const [importText, setImportText] = useState('')
 
@@ -182,6 +183,15 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 			const next = new Set(prev)
 			if (next.has(id)) next.delete(id)
 			else next.add(id)
+			return next
+		})
+	}
+
+	const toggleExpanded = (authorId: string) => {
+		setExpanded(prev => {
+			const next = new Set(prev)
+			if (next.has(authorId)) next.delete(authorId)
+			else next.add(authorId)
 			return next
 		})
 	}
@@ -229,6 +239,9 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 			.sort((a, b) => b.latest - a.latest)
 	}, [log, search, filters])
 
+	const visibleEvents = groups.reduce((n, g) => n + g.entries.length, 0)
+	const visibleFavorites = groups.reduce((n, g) => n + g.favorites, 0)
+
 	return (
 		<Page>
 			<ScrollView
@@ -254,8 +267,12 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 
 				<Design.TableRowGroup
 					title="Archive — by person"
-					description="Search by username or nickname, tap a person to open their archive."
+					description="Search by username, nickname, server or text. Tap a person to open their archive. Each event shows 🏢 server name or 💬 DM underneath."
 				>
+					<Design.TableRow
+						label="Showing"
+						subLabel={`${visibleEvents} event(s) • ${groups.length} person(s) • ${visibleFavorites} ⭐`}
+					/>
 					<View style={styles.searchWrap}>
 						<TextInput
 							value={search}
@@ -295,6 +312,26 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 								</Design.Text>
 							</TouchableOpacity>
 						) : null}
+						{groups.length > 0 ? (
+							<TouchableOpacity
+								style={[styles.chip, styles.chipClear]}
+								onPress={() => setExpanded(new Set(groups.map(g => g.authorId)))}
+							>
+								<Design.Text variant="text-sm/medium" style={styles.chipTxt}>
+									Expand all
+								</Design.Text>
+							</TouchableOpacity>
+						) : null}
+						{expanded.size > 0 ? (
+							<TouchableOpacity
+								style={[styles.chip, styles.chipClear]}
+								onPress={() => setExpanded(new Set())}
+							>
+								<Design.Text variant="text-sm/medium" style={styles.chipTxt}>
+									Collapse all
+								</Design.Text>
+							</TouchableOpacity>
+						) : null}
 					</View>
 
 					{groups.length === 0 ? (
@@ -304,7 +341,7 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 						/>
 					) : (
 						groups.map(group => {
-							const isOpen = expanded === group.authorId
+							const isOpen = expanded.has(group.authorId)
 							const header = group.displayName
 								? `${group.displayName}  @${group.author}`
 								: `@${group.author}`
@@ -312,7 +349,7 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 								<View key={group.authorId}>
 									<TouchableOpacity
 										style={styles.authorHeader}
-										onPress={() => setExpanded(isOpen ? null : group.authorId)}
+										onPress={() => toggleExpanded(group.authorId)}
 									>
 										<Design.Text variant="text-md/medium" style={styles.authorName}>
 											{isOpen ? '▾' : '▸'} {header}
@@ -340,9 +377,11 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 															{formatDate(entry.at)}
 														</Design.Text>
 													</View>
-													<Design.Text variant="text-sm/normal" style={styles.entryLocation}>
-														{locationText(entry)}
-													</Design.Text>
+													{locationText(entry) ? (
+														<Design.Text variant="text-sm/normal" style={styles.entryLocation}>
+															{locationText(entry)}
+														</Design.Text>
+													) : null}
 													{entry.oldContent ? (
 														<Design.Text variant="text-sm/normal" selectable style={styles.entryBody}>
 															{entry.oldContent}
@@ -369,9 +408,13 @@ export function SettingsComponent(_props?: { api?: unknown }) {
 				</Design.TableRowGroup>
 
 				<Design.TableRowGroup
-					title="Backup"
-					description="Export copies your archive to the clipboard. Import restores a JSON backup (duplicates are skipped)."
+					title="Backup & Export"
+					description="Export is here — JSON (full backup), TXT, or MD. It copies the file text to your clipboard. Import restores a JSON backup (duplicates are skipped)."
 				>
+					<Design.TableRow
+						label="📤 Export archive"
+						subLabel="Choose JSON / TXT / MD below — copied to clipboard"
+					/>
 					<View style={styles.chips}>
 						<TouchableOpacity style={styles.chip} onPress={() => doExport('json')}>
 							<Design.Text variant="text-sm/medium" style={styles.chipTxt}>

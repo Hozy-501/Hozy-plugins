@@ -9,11 +9,12 @@ A Valenced plugin for Discord (Android) that saves **edited** and **deleted** me
 ## Features
 
 - **Ghost log (200 events)** — every edit (`old → new`) and delete is saved on your device (`ghosts.json`)
-- **Archive by person** — grouped by author (nickname + `@username`), tap a person to open their archive
-- **Search + multi-filters** — search by username/nickname/text, filter by Edits / Deletes / Media / Voice / Links / Favorites (multiple at once)
+- **Archive by person** — grouped by author (nickname + `@username`), tap a person to open their archive; **Expand all / Collapse all** for quick control
+- **Search + multi-filters** — search by username/nickname/server/text, filter by Edits / Deletes / Media / Voice / Links / 🏢 Servers / 💬 DMs / Favorites (multiple at once)
+- **Server or DM under every event** — each ghost shows `🏢 Server name` or `💬 DM` (group DMs too), so you know where it came from
 - **Media + voice + links** — entries remember attachments, 🎤 voice flags, and 🔗 links (links may expire like CDN)
 - **Favorites (⭐)** — star any ghost, then filter only ⭐ across everyone
-- **Backup: Export (JSON/TXT/MD) + Import** — copy your archive to the clipboard and restore it later (or move chats between devices); duplicates are skipped
+- **Backup: Export (JSON/TXT/MD) + Import** — find it at the bottom under **Backup & Export**; export copies the archive text to your clipboard, and Import restores a JSON backup (duplicates are skipped)
 - **Survives restarts & updates** — old logs stay intact across versions, no data loss on update
 - **Recent cache (500 messages)** — remembers each message's last content so deletes/edits can be logged
 - **Optional toasts** — quick `🗑 Deleted by …` / `✏️ Edited by …` alerts
@@ -50,11 +51,12 @@ Go to **Settings → Valenced → Plugins → Hozy's Ghost Messages → Settings
 | Option | Description |
 |---|---|
 | Notify on delete / Notify on edit | Toggle the toast alerts on/off |
-| Archive — by person | Expand a person to see their edits/deletes with date, media, voice, links |
-| Search | By username, nickname, or text |
-| Filters (multi-select) | Edits / Deletes / Media / Voice / Links / Favorites |
+| Archive — by person | Expand a person to see their edits/deletes with date, media, voice, links, and 🏢 server / 💬 DM |
+| Search | By username, nickname, server name, or text |
+| Filters (multi-select) | Edits / Deletes / Media / Voice / Links / 🏢 Servers / 💬 DMs / Favorites |
+| Expand all / Collapse all | Open or close every person's archive at once |
 | ⭐ Favorite | Star any ghost; filter ⭐ to see only favorites |
-| Export | JSON (full backup incl. cache), TXT (plain), MD (Markdown) — copies to clipboard |
+| Export (bottom) | In **Settings → Hozy's Ghost Messages → Settings**, scroll to **Backup & Export** → JSON (full backup incl. cache), TXT (plain), MD (Markdown) — copies to clipboard |
 | Import | Paste a JSON backup to restore. Needs `Export as JSON`. |
 | Clear ghost log | Removes the saved events (keeps tracking) |
 | Clear everything | Removes log + message cache |
