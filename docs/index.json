@@ -356,6 +356,30 @@
         }
       }
     },
+    "com.hozy.message-select": {
+      "name": "Hozy's Message Select",
+      "description": "Hozy's Message Select lets you select multiple messages and delete them together, WhatsApp-style, without leaving the chat.",
+      "author": "Hozy",
+      "icon": "TrashIcon",
+      "channels": {
+        "latest": "1.0.0"
+      },
+      "versions": {
+        "1.0.0": {
+          "url": "https://hozy-501.github.io/Hozy-plugins/pool/com.hozy.message-select@1.0.0.zip",
+          "sha256": "60585febb35864c0cc894b5620db05031e0e141e728084d747c0ed46f86a27f7",
+          "size": 5505,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
     "com.hozy.translator": {
       "name": "Hozy's Translator",
       "description": "Hozy's Translator adds a translate action to Discord message menus and shows the result only to you.",
