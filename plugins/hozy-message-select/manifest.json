@@ -1,0 +1,20 @@
+{
+	"format": 1,
+	"id": "com.hozy.message-select",
+	"name": "Hozy's Message Select",
+	"description": "Hozy's Message Select lets you select multiple messages and delete them together, WhatsApp-style, without leaving the chat.",
+	"author": "Hozy",
+	"icon": "TrashIcon",
+	"version": "1.0.0",
+	"dependencies": {
+		"valenced.api": {
+			"version": ">=1 <2"
+		},
+		"discord": {
+			"version": "*"
+		}
+	},
+	"dist": {
+		"script": "index.js"
+	}
+}
